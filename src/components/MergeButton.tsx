@@ -1,7 +1,7 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Loader2, AlertTriangle, Info } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Download, FileText, Loader2, AlertTriangle, Info, Edit3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { mergePDFs, downloadBlob, MergeResult, detectEncryptedFiles, EncryptedFileInfo } from '@/utils/pdfUtils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -17,6 +17,7 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   const [mergeResult, setMergeResult] = useState<MergeResult | null>(null);
   const [showEncryptedDialog, setShowEncryptedDialog] = useState(false);
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFileInfo[]>([]);
+  const [customFilename, setCustomFilename] = useState('merged-document.pdf');
   const { toast } = useToast();
 
   const performMerge = async (includeEncrypted: boolean = true) => {
@@ -30,6 +31,12 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       setMergeResult(result);
       
       if (result.success) {
+        // Set a default filename based on the first file or use generic name
+        const defaultName = files.length > 0 
+          ? `merged-${files[0].name.replace('.pdf', '')}.pdf`
+          : 'merged-document.pdf';
+        setCustomFilename(defaultName);
+        
         if (result.encryptedPagesWarning) {
           toast({
             title: 'Success with blank pages',
@@ -106,15 +113,25 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     performMerge(false); // Skip encrypted files
   };
 
+  const handleFilenameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    
+    // Ensure it ends with .pdf
+    if (value && !value.toLowerCase().endsWith('.pdf')) {
+      value = value + '.pdf';
+    }
+    
+    setCustomFilename(value);
+  };
+
   const handleDownload = () => {
     if (mergeResult?.mergedPdfBytes) {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-      const filename = `merged-pdf-${timestamp}.pdf`;
-      downloadBlob(mergeResult.mergedPdfBytes, filename);
+      const finalFilename = customFilename || 'merged-document.pdf';
+      downloadBlob(mergeResult.mergedPdfBytes, finalFilename);
       
       toast({
         title: 'Download started',
-        description: `Your merged PDF "${filename}" is downloading`,
+        description: `Your merged PDF "${finalFilename}" is downloading`,
       });
     }
   };
@@ -166,9 +183,31 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
             <h3 className="text-lg font-semibold text-green-900 mb-2">
               PDF Successfully Merged!
             </h3>
-            <p className="text-green-700 mb-4">
+            <p className="text-green-700 mb-6">
               {mergeResult.processedFiles.length} PDF files combined into one document with {mergeResult.totalPages} total pages.
             </p>
+            
+            {/* Custom filename input */}
+            <div className="mb-6 max-w-md mx-auto">
+              <div className="flex items-center gap-2 mb-2">
+                <Edit3 className="h-4 w-4 text-gray-600" />
+                <label htmlFor="filename" className="text-sm font-medium text-gray-700">
+                  Filename:
+                </label>
+              </div>
+              <Input
+                id="filename"
+                type="text"
+                value={customFilename}
+                onChange={handleFilenameChange}
+                placeholder="Enter filename..."
+                className="text-center"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Your file will be saved as: <span className="font-medium">{customFilename}</span>
+              </p>
+            </div>
+            
             <Button
               onClick={handleDownload}
               className="bg-green-600 hover:bg-green-700 text-white"
