@@ -1,4 +1,3 @@
-
 import { PDFDocument } from 'pdf-lib';
 
 export interface MergeResult {
@@ -9,126 +8,39 @@ export interface MergeResult {
   totalPages: number;
 }
 
-// More comprehensive validation to detect if pages will render as blank
-async function validatePageContent(pdf: PDFDocument, pageIndex: number): Promise<boolean> {
+// Simplified but more reliable validation for encrypted content
+async function isEncryptedContentBlank(pdf: PDFDocument): Promise<boolean> {
   try {
-    const page = pdf.getPage(pageIndex);
-    const { width, height } = page.getSize();
+    console.log('Testing if encrypted PDF will produce blank content...');
     
-    // If page has no dimensions, it's definitely empty
-    if (width === 0 || height === 0) {
-      console.log(`Page ${pageIndex} has no dimensions`);
-      return false;
-    }
+    // Create a small test PDF with the first page
+    const testPdf = await PDFDocument.create();
     
-    // Try to access page content stream
     try {
-      const pageContent = page.node.Contents();
+      // Try to copy the first page
+      const [copiedPage] = await testPdf.copyPages(pdf, [0]);
+      testPdf.addPage(copiedPage);
       
-      // If no content at all
-      if (!pageContent) {
-        console.log(`Page ${pageIndex} has no content stream`);
-        return false;
+      // Try to save the test PDF
+      const testBytes = await testPdf.save();
+      
+      // Check if the generated PDF is suspiciously small (likely means blank content)
+      if (testBytes.length < 2000) {
+        console.log(`Test PDF is too small (${testBytes.length} bytes) - likely blank content`);
+        return true; // Content is blank
       }
       
-      // If content is an empty array
-      if (Array.isArray(pageContent) && pageContent.length === 0) {
-        console.log(`Page ${pageIndex} has empty content array`);
-        return false;
-      }
+      console.log(`Test PDF size: ${testBytes.length} bytes - content appears valid`);
+      return false; // Content appears valid
       
-      // Try to get the actual content bytes - this often fails for encrypted content
-      if (Array.isArray(pageContent)) {
-        for (const content of pageContent) {
-          try {
-            const bytes = content.Contents();
-            if (!bytes || bytes.length === 0) {
-              console.log(`Page ${pageIndex} content stream is empty`);
-              return false;
-            }
-          } catch (contentError) {
-            console.log(`Page ${pageIndex} content stream access failed:`, contentError);
-            return false;
-          }
-        }
-      } else {
-        try {
-          const bytes = pageContent.Contents();
-          if (!bytes || bytes.length === 0) {
-            console.log(`Page ${pageIndex} single content stream is empty`);
-            return false;
-          }
-        } catch (contentError) {
-          console.log(`Page ${pageIndex} single content stream access failed:`, contentError);
-          return false;
-        }
-      }
-      
-    } catch (contentAccessError) {
-      console.log(`Page ${pageIndex} content access completely failed:`, contentAccessError);
-      return false;
+    } catch (copyError) {
+      console.log('Failed to copy page for testing:', copyError);
+      return true; // If we can't copy, assume it's encrypted/blank
     }
     
-    return true;
   } catch (error) {
-    console.log(`Page ${pageIndex} validation failed:`, error);
-    return false;
-  }
-}
-
-// More thorough test to detect if encrypted PDF will produce blank content
-async function testEncryptedPdfContent(pdf: PDFDocument): Promise<boolean> {
-  try {
-    console.log('Testing encrypted PDF content...');
-    
-    // Test multiple pages if available (up to 3)
-    const pageCount = pdf.getPageCount();
-    const pagesToTest = Math.min(3, pageCount);
-    
-    for (let i = 0; i < pagesToTest; i++) {
-      // First validate the source page
-      const sourcePageValid = await validatePageContent(pdf, i);
-      if (!sourcePageValid) {
-        console.log(`Source page ${i} validation failed`);
-        return false;
-      }
-      
-      // Create a test PDF with this page
-      try {
-        const testPdf = await PDFDocument.create();
-        const [copiedPage] = await testPdf.copyPages(pdf, [i]);
-        testPdf.addPage(copiedPage);
-        
-        // Validate the copied page
-        const copiedPageValid = await validatePageContent(testPdf, 0);
-        if (!copiedPageValid) {
-          console.log(`Copied page ${i} validation failed`);
-          return false;
-        }
-        
-        // Try to generate the test PDF bytes - this often fails for truly encrypted content
-        try {
-          const testBytes = await testPdf.save();
-          if (!testBytes || testBytes.length < 1000) { // Very small PDFs are likely empty
-            console.log(`Test PDF for page ${i} is too small (${testBytes?.length || 0} bytes)`);
-            return false;
-          }
-        } catch (saveError) {
-          console.log(`Failed to save test PDF for page ${i}:`, saveError);
-          return false;
-        }
-        
-      } catch (copyError) {
-        console.log(`Failed to copy page ${i} for testing:`, copyError);
-        return false;
-      }
-    }
-    
-    console.log('Encrypted PDF content test passed');
-    return true;
-  } catch (error) {
-    console.log('Encrypted PDF content test failed:', error);
-    return false;
+    console.log('Encrypted content test failed:', error);
+    return true; // If test fails, assume content is blank
   }
 }
 
@@ -147,44 +59,51 @@ export async function mergePDFs(files: File[]): Promise<MergeResult> {
     try {
       const arrayBuffer = await file.arrayBuffer();
       let pdf: PDFDocument;
-      let isEncrypted = false;
+      let wasEncrypted = false;
       
       // First, try to load the PDF normally
       try {
         pdf = await PDFDocument.load(arrayBuffer);
+        console.log(`Successfully loaded ${file.name} normally`);
       } catch (encryptionError) {
         console.log(`File ${file.name} appears to be encrypted, trying with ignoreEncryption...`);
-        isEncrypted = true;
+        wasEncrypted = true;
         
         // If it fails due to encryption, try with ignoreEncryption option
         try {
           pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-          console.log(`Successfully loaded encrypted file: ${file.name}`);
+          console.log(`Successfully loaded encrypted file: ${file.name} with ignoreEncryption`);
         } catch (finalError) {
           console.error(`Failed to load encrypted file ${file.name}:`, finalError);
           skippedFiles.push({
             name: file.name,
-            reason: 'File is encrypted and cannot be processed. Please remove password protection and try again.'
+            reason: 'File is password-protected and cannot be processed. Please remove the password and try again.'
           });
           continue;
         }
       }
       
-      // If the file was encrypted OR if we want to be extra cautious, test content validity
-      if (pdf.getPageCount() > 0) {
-        const hasValidContent = await testEncryptedPdfContent(pdf);
-        if (!hasValidContent) {
-          console.log(`File ${file.name} appears to have invalid or blank content`);
-          const reason = isEncrypted 
-            ? 'This encrypted PDF would produce blank pages in the merged document. Please remove password protection and try again.'
-            : 'This PDF appears to have invalid content and would produce blank pages.';
-          
+      // If the file was loaded with ignoreEncryption, test if it will produce blank content
+      if (wasEncrypted && pdf.getPageCount() > 0) {
+        const isBlank = await isEncryptedContentBlank(pdf);
+        if (isBlank) {
+          console.log(`File ${file.name} would produce blank pages - skipping`);
           skippedFiles.push({
             name: file.name,
-            reason: reason
+            reason: 'This password-protected PDF would produce blank pages. Please remove the password protection and try again.'
           });
           continue;
         }
+      }
+      
+      // If we get here, the PDF should be valid - proceed with merging
+      if (pdf.getPageCount() === 0) {
+        console.log(`File ${file.name} has no pages - skipping`);
+        skippedFiles.push({
+          name: file.name,
+          reason: 'This PDF file contains no pages.'
+        });
+        continue;
       }
       
       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
