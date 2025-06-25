@@ -37,10 +37,21 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       
       if (result.success) {
         if (result.skippedFiles.length > 0) {
-          toast({
-            title: 'Partial success',
-            description: `Merged ${result.processedFiles.length} files. ${result.skippedFiles.length} files were skipped.`,
-          });
+          const encryptedFiles = result.skippedFiles.filter(f => 
+            f.reason.includes('encrypted') || f.reason.includes('blank pages')
+          );
+          
+          if (encryptedFiles.length > 0) {
+            toast({
+              title: 'Partial success with encrypted files',
+              description: `Merged ${result.processedFiles.length} files. ${encryptedFiles.length} encrypted files were skipped to prevent blank pages.`,
+            });
+          } else {
+            toast({
+              title: 'Partial success',
+              description: `Merged ${result.processedFiles.length} files. ${result.skippedFiles.length} files were skipped.`,
+            });
+          }
         } else {
           toast({
             title: 'Success!',
