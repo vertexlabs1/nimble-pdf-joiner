@@ -114,19 +114,27 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   };
 
   const handleFilenameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value;
-    
-    // Ensure it ends with .pdf
-    if (value && !value.toLowerCase().endsWith('.pdf')) {
-      value = value + '.pdf';
+    // Simply set the value without automatically adding .pdf
+    setCustomFilename(e.target.value);
+  };
+
+  const handleFilenameBlur = () => {
+    // Add .pdf extension when user finishes typing (if not already present)
+    if (customFilename && !customFilename.toLowerCase().endsWith('.pdf')) {
+      setCustomFilename(customFilename + '.pdf');
     }
-    
-    setCustomFilename(value);
+  };
+
+  const getDisplayFilename = () => {
+    // For preview purposes, show what the final filename will be
+    if (!customFilename) return 'merged-document.pdf';
+    if (customFilename.toLowerCase().endsWith('.pdf')) return customFilename;
+    return customFilename + '.pdf';
   };
 
   const handleDownload = () => {
     if (mergeResult?.mergedPdfBytes) {
-      const finalFilename = customFilename || 'merged-document.pdf';
+      const finalFilename = getDisplayFilename();
       downloadBlob(mergeResult.mergedPdfBytes, finalFilename);
       
       toast({
@@ -200,11 +208,12 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
                 type="text"
                 value={customFilename}
                 onChange={handleFilenameChange}
+                onBlur={handleFilenameBlur}
                 placeholder="Enter filename..."
                 className="text-center"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Your file will be saved as: <span className="font-medium">{customFilename}</span>
+                Your file will be saved as: <span className="font-medium">{getDisplayFilename()}</span>
               </p>
             </div>
             
