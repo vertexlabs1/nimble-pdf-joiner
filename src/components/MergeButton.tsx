@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Loader2, AlertTriangle } from 'lucide-react';
+import { Download, FileText, Loader2, AlertTriangle, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { mergePDFs, downloadBlob, MergeResult, detectEncryptedFiles, EncryptedFileInfo } from '@/utils/pdfUtils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -30,7 +30,12 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       setMergeResult(result);
       
       if (result.success) {
-        if (result.skippedFiles.length > 0) {
+        if (result.encryptedPagesWarning) {
+          toast({
+            title: 'Success with blank pages',
+            description: `PDF merged successfully. Note: Some pages from encrypted files appear blank.`,
+          });
+        } else if (result.skippedFiles.length > 0) {
           toast({
             title: 'Partial success',
             description: `Merged ${result.processedFiles.length} files. ${result.skippedFiles.length} files were skipped.`,
@@ -118,6 +123,21 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     if (mergeResult.success) {
       return (
         <div className="space-y-4">
+          {mergeResult.encryptedPagesWarning && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-2">
+                  <p className="font-medium">Encrypted Content Notice:</p>
+                  <p className="text-sm">
+                    Some pages in your merged PDF appear blank because they came from password-protected files. 
+                    This is a technical limitation - the original content remains encrypted and cannot be displayed without the password.
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {mergeResult.skippedFiles.length > 0 && (
             <Alert>
               <AlertTriangle className="h-4 w-4" />

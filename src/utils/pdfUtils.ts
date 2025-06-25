@@ -7,6 +7,7 @@ export interface MergeResult {
   processedFiles: string[];
   skippedFiles: { name: string; reason: string; }[];
   totalPages: number;
+  encryptedPagesWarning?: boolean;
 }
 
 export interface EncryptedFileInfo {
@@ -53,6 +54,7 @@ export async function mergePDFs(files: File[], includeEncrypted: boolean = true)
   const processedFiles: string[] = [];
   const skippedFiles: { name: string; reason: string; }[] = [];
   let totalPages = 0;
+  let hasEncryptedContent = false;
 
   for (let i = 0; i < files.length; i++) {
     const file = files[i];
@@ -68,27 +70,28 @@ export async function mergePDFs(files: File[], includeEncrypted: boolean = true)
         pdf = await PDFDocument.load(arrayBuffer);
         console.log(`Successfully loaded ${file.name} normally`);
       } catch (encryptionError) {
-        console.log(`File ${file.name} appears to be encrypted`);
+        console.log(`File ${file.name} is encrypted`);
         wasEncrypted = true;
         
         if (!includeEncrypted) {
           console.log(`Skipping encrypted file: ${file.name} (user chose not to include)`);
           skippedFiles.push({
             name: file.name,
-            reason: 'Password-protected file skipped by user choice.'
+            reason: 'Password-protected file excluded by user choice.'
           });
           continue;
         }
         
-        // Try with ignoreEncryption option
+        // Try with ignoreEncryption option - this will create blank pages but preserve structure
         try {
           pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-          console.log(`Successfully loaded encrypted file: ${file.name} with ignoreEncryption`);
+          hasEncryptedContent = true;
+          console.log(`Loaded encrypted file ${file.name} - pages will be blank`);
         } catch (finalError) {
           console.error(`Failed to load encrypted file ${file.name}:`, finalError);
           skippedFiles.push({
             name: file.name,
-            reason: 'Password-protected PDF could not be processed. The file may be corrupted or use unsupported encryption.'
+            reason: 'Password-protected PDF could not be processed due to encryption limitations.'
           });
           continue;
         }
@@ -112,7 +115,7 @@ export async function mergePDFs(files: File[], includeEncrypted: boolean = true)
       totalPages += copiedPages.length;
       
       if (wasEncrypted) {
-        console.log(`Added ${copiedPages.length} pages from encrypted file ${file.name}`);
+        console.log(`Added ${copiedPages.length} blank pages from encrypted file ${file.name}`);
       } else {
         console.log(`Added ${copiedPages.length} pages from ${file.name}`);
       }
@@ -145,7 +148,8 @@ export async function mergePDFs(files: File[], includeEncrypted: boolean = true)
     mergedPdfBytes,
     processedFiles,
     skippedFiles,
-    totalPages
+    totalPages,
+    encryptedPagesWarning: hasEncryptedContent
   };
 }
 

@@ -53,24 +53,34 @@ export const EncryptedPDFDialog = ({
               </ul>
             </div>
             <div className="space-y-2 text-sm">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                <p className="font-medium text-yellow-800 mb-1">
+                  ⚠️ Important Notice
+                </p>
+                <p className="text-yellow-700">
+                  Pages from encrypted files will appear <strong>blank</strong> in the merged PDF. 
+                  This is a technical limitation - the content cannot be decrypted without the password.
+                </p>
+              </div>
               <p>
-                <strong>Note:</strong> The combined PDF file will not be password protected.
+                Do you want to continue? You can choose to:
               </p>
-              <p>
-                Do you want to continue with the merge?
-              </p>
+              <ul className="text-xs text-gray-600 ml-4 space-y-1">
+                <li>• <strong>Yes</strong> - Include files (pages will be blank)</li>
+                <li>• <strong>No</strong> - Skip encrypted files entirely</li>
+              </ul>
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onCancel}>
-            No
+            No, Skip Them
           </AlertDialogCancel>
           <AlertDialogAction 
             onClick={onConfirm}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-orange-600 hover:bg-orange-700"
           >
-            Yes
+            Yes, Include (Blank Pages)
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
