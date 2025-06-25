@@ -3,8 +3,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { mergePDFs, downloadBlob, MergeResult } from '@/utils/pdfUtils';
+import { mergePDFs, downloadBlob, MergeResult, detectEncryptedFiles, EncryptedFileInfo } from '@/utils/pdfUtils';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { EncryptedPDFDialog } from '@/components/EncryptedPDFDialog';
 
 interface MergeButtonProps {
   files: File[];
@@ -14,44 +15,26 @@ interface MergeButtonProps {
 
 export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps) => {
   const [mergeResult, setMergeResult] = useState<MergeResult | null>(null);
+  const [showEncryptedDialog, setShowEncryptedDialog] = useState(false);
+  const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFileInfo[]>([]);
   const { toast } = useToast();
 
-  const handleMerge = async () => {
-    if (files.length < 2) {
-      toast({
-        title: 'Not enough files',
-        description: 'Please upload at least 2 PDF files to merge',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+  const performMerge = async (includeEncrypted: boolean = true) => {
     setIsLoading(true);
     setMergeResult(null);
 
     try {
       console.log('Starting PDF merge process with', files.length, 'files');
       
-      const result = await mergePDFs(files);
+      const result = await mergePDFs(files, includeEncrypted);
       setMergeResult(result);
       
       if (result.success) {
         if (result.skippedFiles.length > 0) {
-          const encryptedFiles = result.skippedFiles.filter(f => 
-            f.reason.includes('encrypted') || f.reason.includes('blank pages')
-          );
-          
-          if (encryptedFiles.length > 0) {
-            toast({
-              title: 'Partial success with encrypted files',
-              description: `Merged ${result.processedFiles.length} files. ${encryptedFiles.length} encrypted files were skipped to prevent blank pages.`,
-            });
-          } else {
-            toast({
-              title: 'Partial success',
-              description: `Merged ${result.processedFiles.length} files. ${result.skippedFiles.length} files were skipped.`,
-            });
-          }
+          toast({
+            title: 'Partial success',
+            description: `Merged ${result.processedFiles.length} files. ${result.skippedFiles.length} files were skipped.`,
+          });
         } else {
           toast({
             title: 'Success!',
@@ -77,6 +60,45 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleMerge = async () => {
+    if (files.length < 2) {
+      toast({
+        title: 'Not enough files',
+        description: 'Please upload at least 2 PDF files to merge',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check for encrypted files first
+    try {
+      const detectedEncryptedFiles = await detectEncryptedFiles(files);
+      
+      if (detectedEncryptedFiles.length > 0) {
+        // Show confirmation dialog
+        setEncryptedFiles(detectedEncryptedFiles);
+        setShowEncryptedDialog(true);
+      } else {
+        // No encrypted files, proceed directly
+        await performMerge(true);
+      }
+    } catch (error) {
+      console.error('Error detecting encrypted files:', error);
+      // If detection fails, try to merge anyway
+      await performMerge(true);
+    }
+  };
+
+  const handleConfirmEncrypted = () => {
+    setShowEncryptedDialog(false);
+    performMerge(true); // Include encrypted files
+  };
+
+  const handleCancelEncrypted = () => {
+    setShowEncryptedDialog(false);
+    performMerge(false); // Skip encrypted files
   };
 
   const handleDownload = () => {
@@ -172,23 +194,33 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   }
 
   return (
-    <Button
-      onClick={handleMerge}
-      disabled={isLoading || files.length < 2}
-      size="lg"
-      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3"
-    >
-      {isLoading ? (
-        <>
-          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-          Merging PDFs...
-        </>
-      ) : (
-        <>
-          <FileText className="h-5 w-5 mr-2" />
-          Merge {files.length} PDFs
-        </>
-      )}
-    </Button>
+    <>
+      <Button
+        onClick={handleMerge}
+        disabled={isLoading || files.length < 2}
+        size="lg"
+        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3"
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            Merging PDFs...
+          </>
+        ) : (
+          <>
+            <FileText className="h-5 w-5 mr-2" />
+            Merge {files.length} PDFs
+          </>
+        )}
+      </Button>
+
+      <EncryptedPDFDialog
+        open={showEncryptedDialog}
+        onOpenChange={setShowEncryptedDialog}
+        encryptedFiles={encryptedFiles.map(f => f.name)}
+        onConfirm={handleConfirmEncrypted}
+        onCancel={handleCancelEncrypted}
+      />
+    </>
   );
 };

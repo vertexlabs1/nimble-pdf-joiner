@@ -1,3 +1,4 @@
+
 import { PDFDocument } from 'pdf-lib';
 
 export interface MergeResult {
@@ -8,44 +9,45 @@ export interface MergeResult {
   totalPages: number;
 }
 
-// Simplified but more reliable validation for encrypted content
-async function isEncryptedContentBlank(pdf: PDFDocument): Promise<boolean> {
+export interface EncryptedFileInfo {
+  name: string;
+  index: number;
+}
+
+// Check if a PDF file is encrypted by attempting to load it normally
+async function checkIfEncrypted(file: File): Promise<boolean> {
   try {
-    console.log('Testing if encrypted PDF will produce blank content...');
-    
-    // Create a small test PDF with the first page
-    const testPdf = await PDFDocument.create();
-    
-    try {
-      // Try to copy the first page
-      const [copiedPage] = await testPdf.copyPages(pdf, [0]);
-      testPdf.addPage(copiedPage);
-      
-      // Try to save the test PDF
-      const testBytes = await testPdf.save();
-      
-      // Check if the generated PDF is suspiciously small (likely means blank content)
-      if (testBytes.length < 2000) {
-        console.log(`Test PDF is too small (${testBytes.length} bytes) - likely blank content`);
-        return true; // Content is blank
-      }
-      
-      console.log(`Test PDF size: ${testBytes.length} bytes - content appears valid`);
-      return false; // Content appears valid
-      
-    } catch (copyError) {
-      console.log('Failed to copy page for testing:', copyError);
-      return true; // If we can't copy, assume it's encrypted/blank
-    }
-    
+    const arrayBuffer = await file.arrayBuffer();
+    await PDFDocument.load(arrayBuffer);
+    return false; // Successfully loaded, not encrypted
   } catch (error) {
-    console.log('Encrypted content test failed:', error);
-    return true; // If test fails, assume content is blank
+    // If loading fails, it might be encrypted
+    const errorMessage = error instanceof Error ? error.message.toLowerCase() : '';
+    return errorMessage.includes('encrypt') || errorMessage.includes('password') || errorMessage.includes('security');
   }
 }
 
-export async function mergePDFs(files: File[]): Promise<MergeResult> {
+// Detect which files are encrypted before merging
+export async function detectEncryptedFiles(files: File[]): Promise<EncryptedFileInfo[]> {
+  console.log('Checking for encrypted files...');
+  const encryptedFiles: EncryptedFileInfo[] = [];
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const isEncrypted = await checkIfEncrypted(file);
+    if (isEncrypted) {
+      console.log(`Detected encrypted file: ${file.name}`);
+      encryptedFiles.push({ name: file.name, index: i });
+    }
+  }
+  
+  console.log(`Found ${encryptedFiles.length} encrypted files`);
+  return encryptedFiles;
+}
+
+export async function mergePDFs(files: File[], includeEncrypted: boolean = true): Promise<MergeResult> {
   console.log('Starting PDF merge with files:', files.map(f => f.name));
+  console.log('Include encrypted files:', includeEncrypted);
   
   const mergedPdf = await PDFDocument.create();
   const processedFiles: string[] = [];
@@ -66,10 +68,19 @@ export async function mergePDFs(files: File[]): Promise<MergeResult> {
         pdf = await PDFDocument.load(arrayBuffer);
         console.log(`Successfully loaded ${file.name} normally`);
       } catch (encryptionError) {
-        console.log(`File ${file.name} appears to be encrypted, trying with ignoreEncryption...`);
+        console.log(`File ${file.name} appears to be encrypted`);
         wasEncrypted = true;
         
-        // If it fails due to encryption, try with ignoreEncryption option
+        if (!includeEncrypted) {
+          console.log(`Skipping encrypted file: ${file.name} (user chose not to include)`);
+          skippedFiles.push({
+            name: file.name,
+            reason: 'Password-protected file skipped by user choice.'
+          });
+          continue;
+        }
+        
+        // Try with ignoreEncryption option
         try {
           pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
           console.log(`Successfully loaded encrypted file: ${file.name} with ignoreEncryption`);
@@ -77,26 +88,13 @@ export async function mergePDFs(files: File[]): Promise<MergeResult> {
           console.error(`Failed to load encrypted file ${file.name}:`, finalError);
           skippedFiles.push({
             name: file.name,
-            reason: 'File is password-protected and cannot be processed. Please remove the password and try again.'
+            reason: 'Password-protected PDF could not be processed. The file may be corrupted or use unsupported encryption.'
           });
           continue;
         }
       }
       
-      // If the file was loaded with ignoreEncryption, test if it will produce blank content
-      if (wasEncrypted && pdf.getPageCount() > 0) {
-        const isBlank = await isEncryptedContentBlank(pdf);
-        if (isBlank) {
-          console.log(`File ${file.name} would produce blank pages - skipping`);
-          skippedFiles.push({
-            name: file.name,
-            reason: 'This password-protected PDF would produce blank pages. Please remove the password protection and try again.'
-          });
-          continue;
-        }
-      }
-      
-      // If we get here, the PDF should be valid - proceed with merging
+      // Check if PDF has pages
       if (pdf.getPageCount() === 0) {
         console.log(`File ${file.name} has no pages - skipping`);
         skippedFiles.push({
@@ -106,12 +104,18 @@ export async function mergePDFs(files: File[]): Promise<MergeResult> {
         continue;
       }
       
+      // Copy pages to merged PDF
       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
       copiedPages.forEach(page => mergedPdf.addPage(page));
       
       processedFiles.push(file.name);
       totalPages += copiedPages.length;
-      console.log(`Added ${copiedPages.length} pages from ${file.name}`);
+      
+      if (wasEncrypted) {
+        console.log(`Added ${copiedPages.length} pages from encrypted file ${file.name}`);
+      } else {
+        console.log(`Added ${copiedPages.length} pages from ${file.name}`);
+      }
       
     } catch (error) {
       console.error(`Error processing ${file.name}:`, error);
