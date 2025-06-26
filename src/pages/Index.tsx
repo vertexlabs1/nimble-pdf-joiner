@@ -4,6 +4,7 @@ import { PDFUploader } from '@/components/PDFUploader';
 import { FileList } from '@/components/FileList';
 import { MergeButton } from '@/components/MergeButton';
 import { SecurityCallout } from '@/components/SecurityCallout';
+import { SecurityInfoDialog } from '@/components/SecurityInfoDialog';
 import { HowItWorks } from '@/components/HowItWorks';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +40,7 @@ const Index = () => {
               <FileText className="h-8 w-8 text-white" />
             </div>
           </div>
-          <div className="flex justify-center gap-2 mb-4">
+          <div className="flex justify-center items-center gap-2 mb-4">
             <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
               <Shield className="h-3 w-3 mr-1" />
               100% Private
@@ -48,6 +49,7 @@ const Index = () => {
               <Lock className="h-3 w-3 mr-1" />
               No Uploads
             </Badge>
+            <SecurityInfoDialog />
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-4">
             Secure PDF Merge Tool
