@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { PDFUploader } from '@/components/PDFUploader';
 import { FileList } from '@/components/FileList';
 import { MergeButton } from '@/components/MergeButton';
@@ -35,7 +36,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-8">
+        <header className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
             <div className="bg-gradient-to-r from-green-600 to-blue-600 p-3 rounded-lg">
               <FileText className="h-8 w-8 text-white" />
@@ -61,7 +62,7 @@ const Index = () => {
           <p className="text-sm text-green-700 font-medium">
             ✓ Your files never leave your device ✓ No server uploads ✓ Complete privacy
           </p>
-        </div>
+        </header>
 
         {/* Security Callout */}
         <div className="max-w-3xl mx-auto mb-8">
@@ -69,59 +70,63 @@ const Index = () => {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-4xl mx-auto space-y-8">
+        <main className="max-w-4xl mx-auto space-y-8">
           {/* Upload Area */}
-          <Card className="p-8">
-            <PDFUploader onFilesAdded={handleFilesAdded} disabled={isLoading} />
-          </Card>
+          <section>
+            <Card className="p-8">
+              <PDFUploader onFilesAdded={handleFilesAdded} disabled={isLoading} />
+            </Card>
+          </section>
 
           {/* File List */}
           {files.length > 0 && (
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-green-600" />
-                  <h2 className="text-xl font-semibold">
-                    Uploaded Files ({files.length})
-                  </h2>
-                  <Badge variant="outline" className="text-green-700 border-green-300">
-                    <Eye className="h-3 w-3 mr-1" />
-                    Processed locally
-                  </Badge>
+            <section>
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-green-600" />
+                    <h2 className="text-xl font-semibold">
+                      Uploaded Files ({files.length})
+                    </h2>
+                    <Badge variant="outline" className="text-green-700 border-green-300">
+                      <Eye className="h-3 w-3 mr-1" />
+                      Processed locally
+                    </Badge>
+                  </div>
+                  <button
+                    onClick={handleClear}
+                    className="text-sm text-gray-500 hover:text-red-600 transition-colors"
+                    disabled={isLoading}
+                  >
+                    Clear All
+                  </button>
                 </div>
-                <button
-                  onClick={handleClear}
-                  className="text-sm text-gray-500 hover:text-red-600 transition-colors"
+                <FileList
+                  files={files}
+                  onReorder={handleReorder}
+                  onRemove={handleRemove}
                   disabled={isLoading}
-                >
-                  Clear All
-                </button>
-              </div>
-              <FileList
-                files={files}
-                onReorder={handleReorder}
-                onRemove={handleRemove}
-                disabled={isLoading}
-              />
-            </Card>
+                />
+              </Card>
+            </section>
           )}
 
           {/* Merge Button */}
           {files.length >= 2 && (
-            <div className="text-center">
+            <section className="text-center">
               <MergeButton
                 files={files}
                 isLoading={isLoading}
                 setIsLoading={setIsLoading}
               />
-            </div>
+            </section>
           )}
 
           {/* How It Works */}
           <HowItWorks />
 
           {/* Features */}
-          <div className="grid md:grid-cols-3 gap-6 mt-16">
+          <section className="grid md:grid-cols-3 gap-6 mt-16">
             <div className="text-center p-6">
               <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4">
                 <Shield className="h-6 w-6 text-green-600" />
@@ -149,11 +154,11 @@ const Index = () => {
                 Get your merged PDF immediately. No waiting, no accounts, no sign-ups required.
               </p>
             </div>
-          </div>
-        </div>
+          </section>
+        </main>
 
         {/* Footer */}
-        <div className="mt-16 pt-8">
+        <footer className="mt-16 pt-8">
           <Separator className="mb-6" />
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
             <div className="flex flex-col md:flex-row items-center gap-4">
@@ -169,7 +174,7 @@ const Index = () => {
               Built by <span className="font-medium text-gray-600">VertexLabs</span>
             </p>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );

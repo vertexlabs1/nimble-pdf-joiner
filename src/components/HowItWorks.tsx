@@ -12,7 +12,7 @@ export const HowItWorks = () => {
     {
       icon: Shuffle,
       title: "Reorder & Merge",
-      description: "Drag to reorder, then click merge - all in your browser",
+      description: "Drag to reorder, then click merge - all in your browser", 
       color: "purple"
     },
     {
@@ -37,7 +37,7 @@ export const HowItWorks = () => {
   };
 
   return (
-    <div className="mt-16">
+    <section className="mt-16">
       <div className="text-center mb-12">
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
           How It Works
@@ -65,6 +65,6 @@ export const HowItWorks = () => {
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 };
