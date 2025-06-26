@@ -7,6 +7,8 @@ import { SecurityInfoDialog } from '@/components/SecurityInfoDialog';
 import { HowItWorks } from '@/components/HowItWorks';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Link } from 'react-router-dom';
 import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
 
 const Index = () => {
@@ -147,6 +149,25 @@ const Index = () => {
                 Get your merged PDF immediately. No waiting, no accounts, no sign-ups required.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-16 pt-8">
+          <Separator className="mb-6" />
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
+            <div className="flex flex-col md:flex-row items-center gap-4">
+              <p>© 2025 MergePDFSecurely.com</p>
+              <Link 
+                to="/privacy" 
+                className="text-green-600 hover:text-green-700 transition-colors underline-offset-4 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+            </div>
+            <p className="text-gray-500">
+              Built by <span className="font-medium text-gray-600">VertexLabs</span>
+            </p>
           </div>
         </div>
       </div>
