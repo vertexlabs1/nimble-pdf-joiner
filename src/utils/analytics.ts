@@ -1,5 +1,5 @@
 // Google Apps Script endpoint URL - replace with your actual URL
-const LOG_ENDPOINT = 'https://script.google.com/macros/library/d/1oLt8CVAkw6ziKwAUaiCkLGlZgsPK-Vj5Ff0gD0li6I2meWJ-HqSkedpj/1';
+const LOG_ENDPOINT = 'https://script.google.com/macros/s/AKfycbzuzU_D36YDFN4_6X0xU7drV7GcQW8l6fhQW6vF5jxekTXjJ4hrmVYMr1GPh6mKonW6mA/exec';
 
 export const logPageVisit = async () => {
   try {
