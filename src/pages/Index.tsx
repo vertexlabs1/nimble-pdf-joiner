@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { PDFUploader } from '@/components/PDFUploader';
 import { FileList } from '@/components/FileList';
@@ -52,7 +51,7 @@ const Index = () => {
             <SecurityInfoDialog />
           </div>
           <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-4">
-            Secure PDF Merge Tool
+            Merge PDF Securely
           </h1>
           <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-2">
             Merge multiple PDF files privately and securely - all processing happens in your browser

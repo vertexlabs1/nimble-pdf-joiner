@@ -1,6 +1,7 @@
 
 import { Shield, Lock, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
 
 export const SecurityCallout = () => {
   return (
@@ -10,9 +11,11 @@ export const SecurityCallout = () => {
           <Shield className="h-6 w-6 text-green-600" />
         </div>
       </div>
-      <h3 className="text-xl font-semibold text-center mb-3 text-green-800">
-        100% Private & Secure
-      </h3>
+      <Link to="/privacy" className="block">
+        <h3 className="text-xl font-semibold text-center mb-3 text-green-800 hover:text-green-900 transition-colors cursor-pointer">
+          100% Private & Secure
+        </h3>
+      </Link>
       <p className="text-center text-gray-700 mb-4">
         Your PDF files are processed entirely in your browser. Nothing is uploaded to our servers.
       </p>
