@@ -10,16 +10,10 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
 import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
-import { logPageVisit } from '@/utils/analytics';
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Log page visit when component mounts
-  useEffect(() => {
-    logPageVisit();
-  }, []);
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
