@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2 } from 'lucide-react';
@@ -7,6 +6,7 @@ import { mergePDFs, downloadBlob, MergeResult, detectEncryptedFiles, EncryptedFi
 import { EncryptedPDFDialog } from '@/components/EncryptedPDFDialog';
 import { MergeSuccess } from '@/components/MergeSuccess';
 import { MergeError } from '@/components/MergeError';
+import { logMerge } from '@/utils/analytics';
 
 interface MergeButtonProps {
   files: File[];
@@ -32,6 +32,12 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       setMergeResult(result);
       
       if (result.success) {
+        // Calculate total file size in MB for analytics
+        const totalSizeMB = files.reduce((total, file) => total + file.size, 0) / (1024 * 1024);
+        
+        // Log successful merge to analytics
+        await logMerge(files.length, Math.round(totalSizeMB * 100) / 100);
+        
         const defaultName = files.length > 0 
           ? `merged-${files[0].name.replace('.pdf', '')}.pdf`
           : 'merged-document.pdf';
