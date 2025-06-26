@@ -7,6 +7,8 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -20,6 +22,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { FileText, GripVertical, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
 interface FileListProps {
   files: File[];
@@ -33,9 +36,17 @@ interface SortableFileItemProps {
   index: number;
   onRemove: (index: number) => void;
   disabled?: boolean;
+  isDragOverlay?: boolean;
 }
 
-const SortableFileItem = ({ file, index, onRemove, disabled }: SortableFileItemProps) => {
+// Generate stable unique ID for each file
+const generateFileId = (file: File, index: number): string => {
+  return `${file.name}-${file.size}-${file.lastModified}-${index}`;
+};
+
+const SortableFileItem = ({ file, index, onRemove, disabled, isDragOverlay = false }: SortableFileItemProps) => {
+  const fileId = generateFileId(file, index);
+  
   const {
     attributes,
     listeners,
@@ -43,12 +54,14 @@ const SortableFileItem = ({ file, index, onRemove, disabled }: SortableFileItemP
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: file.name + index });
+  } = useSortable({ 
+    id: fileId,
+    disabled: disabled || isDragOverlay
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    transition: isDragOverlay ? undefined : transition,
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -64,8 +77,9 @@ const SortableFileItem = ({ file, index, onRemove, disabled }: SortableFileItemP
       ref={setNodeRef}
       style={style}
       className={`
-        flex items-center gap-4 p-4 bg-white border rounded-lg shadow-sm transition-all
-        ${isDragging ? 'shadow-lg ring-2 ring-blue-200' : 'hover:shadow-md'}
+        flex items-center gap-4 p-4 bg-white border rounded-lg shadow-sm
+        ${isDragging && !isDragOverlay ? 'opacity-50' : ''}
+        ${isDragOverlay ? 'shadow-xl ring-2 ring-blue-300 scale-105' : 'hover:shadow-md'}
         ${disabled ? 'opacity-60' : ''}
       `}
     >
@@ -94,36 +108,60 @@ const SortableFileItem = ({ file, index, onRemove, disabled }: SortableFileItemP
         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
           #{index + 1}
         </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onRemove(index)}
-          disabled={disabled}
-          className="text-gray-400 hover:text-red-600 p-1 h-8 w-8"
-        >
-          <X className="h-4 w-4" />
-        </Button>
+        {!isDragOverlay && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onRemove(index)}
+            disabled={disabled}
+            className="text-gray-400 hover:text-red-600 p-1 h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
 };
 
 export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps) => {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [draggedFile, setDraggedFile] = useState<{ file: File; index: number } | null>(null);
+
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    setActiveId(active.id as string);
+    
+    // Find the dragged file
+    const fileIndex = files.findIndex((file, index) => generateFileId(file, index) === active.id);
+    if (fileIndex !== -1) {
+      setDraggedFile({ file: files[fileIndex], index: fileIndex });
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    setActiveId(null);
+    setDraggedFile(null);
 
     if (active.id !== over?.id) {
-      const oldIndex = files.findIndex((file, index) => file.name + index === active.id);
-      const newIndex = files.findIndex((file, index) => file.name + index === over?.id);
+      const oldIndex = files.findIndex((file, index) => generateFileId(file, index) === active.id);
+      const newIndex = files.findIndex((file, index) => generateFileId(file, index) === over?.id);
 
-      onReorder(arrayMove(files, oldIndex, newIndex));
+      if (oldIndex !== -1 && newIndex !== -1) {
+        onReorder(arrayMove(files, oldIndex, newIndex));
+      }
     }
   };
 
@@ -136,16 +174,17 @@ export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
-          items={files.map((file, index) => file.name + index)}
+          items={files.map((file, index) => generateFileId(file, index))}
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-2">
             {files.map((file, index) => (
               <SortableFileItem
-                key={file.name + index}
+                key={generateFileId(file, index)}
                 file={file}
                 index={index}
                 onRemove={onRemove}
@@ -154,6 +193,18 @@ export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps
             ))}
           </div>
         </SortableContext>
+        
+        <DragOverlay>
+          {activeId && draggedFile ? (
+            <SortableFileItem
+              file={draggedFile.file}
+              index={draggedFile.index}
+              onRemove={onRemove}
+              disabled={disabled}
+              isDragOverlay={true}
+            />
+          ) : null}
+        </DragOverlay>
       </DndContext>
     </div>
   );
