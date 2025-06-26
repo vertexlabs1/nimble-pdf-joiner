@@ -22,6 +22,9 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   const [customFilename, setCustomFilename] = useState('merged-document.pdf');
   const { toast } = useToast();
 
+  // Ensure fallback endpoint is passed into env for safety
+  const LOG_ENDPOINT = import.meta.env.PUBLIC_LOG_URL || "https://script.google.com/macros/s/AKfycbzuzU_D36YDFN4_6X0xU7drV7GcQW8l6fhQW6vF5jxekTXjJ4hrmVYMr1GPh6mKonW6mA/exec";
+
   const performMerge = async (includeEncrypted: boolean = true) => {
     setIsLoading(true);
     setMergeResult(null);
@@ -32,16 +35,16 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       const result = await mergePDFs(files, includeEncrypted);
       setMergeResult(result);
       
+      const totalSizeMB = calculateTotalSizeMB(files);
+
       if (result.success) {
-        // Log successful merge
-        const totalSizeMB = calculateTotalSizeMB(files);
-        logMergeActivity(files.length, totalSizeMB, false);
-        
+        await logMergeActivity(files.length, totalSizeMB, false); // ✅ Await here
+
         const defaultName = files.length > 0 
           ? `merged-${files[0].name.replace('.pdf', '')}.pdf`
           : 'merged-document.pdf';
         setCustomFilename(defaultName);
-        
+
         if (result.encryptedPagesWarning) {
           toast({
             title: 'Success with blank pages',
@@ -59,10 +62,7 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
           });
         }
       } else {
-        // Log failed merge
-        const totalSizeMB = calculateTotalSizeMB(files);
-        logMergeActivity(files.length, totalSizeMB, true);
-        
+        await logMergeActivity(files.length, totalSizeMB, true); // ✅ Await here
         toast({
           title: 'Merge failed',
           description: 'No files could be processed. Please check the error details below.',
@@ -73,11 +73,8 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       console.log('PDF merge completed');
     } catch (error) {
       console.error('Error merging PDFs:', error);
-      
-      // Log error case
       const totalSizeMB = calculateTotalSizeMB(files);
-      logMergeActivity(files.length, totalSizeMB, true);
-      
+      await logMergeActivity(files.length, totalSizeMB, true); // ✅ Await here
       toast({
         title: 'Merge failed',
         description: 'There was an unexpected error merging your PDF files. Please try again.',
@@ -100,7 +97,7 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
 
     try {
       const detectedEncryptedFiles = await detectEncryptedFiles(files);
-      
+
       if (detectedEncryptedFiles.length > 0) {
         setEncryptedFiles(detectedEncryptedFiles);
         setShowEncryptedDialog(true);
@@ -109,11 +106,8 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       }
     } catch (error) {
       console.error('Error detecting encrypted files:', error);
-      
-      // Log error case
       const totalSizeMB = calculateTotalSizeMB(files);
-      logMergeActivity(files.length, totalSizeMB, true);
-      
+      await logMergeActivity(files.length, totalSizeMB, true); // ✅ Await here too
       await performMerge(true);
     }
   };
@@ -142,7 +136,6 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     if (mergeResult?.mergedPdfBytes) {
       const finalFilename = getDisplayFilename();
       downloadBlob(mergeResult.mergedPdfBytes, finalFilename);
-      
       toast({
         title: 'Download started',
         description: `Your merged PDF "${finalFilename}" is downloading`,
@@ -155,23 +148,19 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   };
 
   if (mergeResult) {
-    if (mergeResult.success) {
-      return (
-        <MergeSuccess
-          mergeResult={mergeResult}
-          customFilename={customFilename}
-          onFilenameChange={handleFilenameChange}
-          onDownload={handleDownload}
-        />
-      );
-    } else {
-      return (
-        <MergeError
-          mergeResult={mergeResult}
-          onTryAgain={handleTryAgain}
-        />
-      );
-    }
+    return mergeResult.success ? (
+      <MergeSuccess
+        mergeResult={mergeResult}
+        customFilename={customFilename}
+        onFilenameChange={handleFilenameChange}
+        onDownload={handleDownload}
+      />
+    ) : (
+      <MergeError
+        mergeResult={mergeResult}
+        onTryAgain={handleTryAgain}
+      />
+    );
   }
 
   return (
