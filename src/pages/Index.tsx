@@ -3,8 +3,11 @@ import { useState } from 'react';
 import { PDFUploader } from '@/components/PDFUploader';
 import { FileList } from '@/components/FileList';
 import { MergeButton } from '@/components/MergeButton';
+import { SecurityCallout } from '@/components/SecurityCallout';
+import { HowItWorks } from '@/components/HowItWorks';
 import { Card } from '@/components/ui/card';
-import { FileText, Zap, Download } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -27,21 +30,39 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-3 rounded-lg">
+            <div className="bg-gradient-to-r from-green-600 to-blue-600 p-3 rounded-lg">
               <FileText className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
-            PDF Merge Tool
+          <div className="flex justify-center gap-2 mb-4">
+            <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
+              <Shield className="h-3 w-3 mr-1" />
+              100% Private
+            </Badge>
+            <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+              <Lock className="h-3 w-3 mr-1" />
+              No Uploads
+            </Badge>
+          </div>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent mb-4">
+            Secure PDF Merge Tool
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Combine multiple PDF files into one document. Upload, reorder, and merge - all processed securely in your browser.
+          <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-2">
+            Merge multiple PDF files privately and securely - all processing happens in your browser
           </p>
+          <p className="text-sm text-green-700 font-medium">
+            ✓ Your files never leave your device ✓ No server uploads ✓ Complete privacy
+          </p>
+        </div>
+
+        {/* Security Callout */}
+        <div className="max-w-3xl mx-auto mb-8">
+          <SecurityCallout />
         </div>
 
         {/* Main Content */}
@@ -56,10 +77,14 @@ const Index = () => {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-blue-600" />
+                  <FileText className="h-5 w-5 text-green-600" />
                   <h2 className="text-xl font-semibold">
                     Uploaded Files ({files.length})
                   </h2>
+                  <Badge variant="outline" className="text-green-700 border-green-300">
+                    <Eye className="h-3 w-3 mr-1" />
+                    Processed locally
+                  </Badge>
                 </div>
                 <button
                   onClick={handleClear}
@@ -89,33 +114,36 @@ const Index = () => {
             </div>
           )}
 
+          {/* How It Works */}
+          <HowItWorks />
+
           {/* Features */}
           <div className="grid md:grid-cols-3 gap-6 mt-16">
             <div className="text-center p-6">
-              <div className="bg-blue-100 p-3 rounded-full w-fit mx-auto mb-4">
-                <FileText className="h-6 w-6 text-blue-600" />
+              <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4">
+                <Shield className="h-6 w-6 text-green-600" />
               </div>
-              <h3 className="font-semibold mb-2">Secure & Private</h3>
+              <h3 className="font-semibold mb-2">100% Private & Secure</h3>
               <p className="text-sm text-gray-600">
-                All processing happens in your browser. Your files never leave your device.
+                All processing happens in your browser. Your files never leave your device or touch our servers.
+              </p>
+            </div>
+            <div className="text-center p-6">
+              <div className="bg-blue-100 p-3 rounded-full w-fit mx-auto mb-4">
+                <Zap className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="font-semibold mb-2">Fast & Easy</h3>
+              <p className="text-sm text-gray-600">
+                Drag, drop, reorder, and merge. Simple workflow with professional results in seconds.
               </p>
             </div>
             <div className="text-center p-6">
               <div className="bg-purple-100 p-3 rounded-full w-fit mx-auto mb-4">
-                <Zap className="h-6 w-6 text-purple-600" />
-              </div>
-              <h3 className="font-semibold mb-2">Fast & Easy</h3>
-              <p className="text-sm text-gray-600">
-                Drag, drop, reorder, and merge. Simple workflow, professional results.
-              </p>
-            </div>
-            <div className="text-center p-6">
-              <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4">
-                <Download className="h-6 w-6 text-green-600" />
+                <Download className="h-6 w-6 text-purple-600" />
               </div>
               <h3 className="font-semibold mb-2">Instant Download</h3>
               <p className="text-sm text-gray-600">
-                Get your merged PDF immediately. No waiting, no sign-ups required.
+                Get your merged PDF immediately. No waiting, no accounts, no sign-ups required.
               </p>
             </div>
           </div>
