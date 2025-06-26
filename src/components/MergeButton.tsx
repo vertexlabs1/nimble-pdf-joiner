@@ -1,8 +1,10 @@
+
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { mergePDFs, downloadBlob, MergeResult, detectEncryptedFiles, EncryptedFileInfo } from '@/utils/pdfUtils';
+import { logMergeActivity, calculateTotalSizeMB } from '@/utils/analytics';
 import { EncryptedPDFDialog } from '@/components/EncryptedPDFDialog';
 import { MergeSuccess } from '@/components/MergeSuccess';
 import { MergeError } from '@/components/MergeError';
@@ -31,6 +33,10 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       setMergeResult(result);
       
       if (result.success) {
+        // Log successful merge
+        const totalSizeMB = calculateTotalSizeMB(files);
+        logMergeActivity(files.length, totalSizeMB, false);
+        
         const defaultName = files.length > 0 
           ? `merged-${files[0].name.replace('.pdf', '')}.pdf`
           : 'merged-document.pdf';
@@ -53,6 +59,10 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
           });
         }
       } else {
+        // Log failed merge
+        const totalSizeMB = calculateTotalSizeMB(files);
+        logMergeActivity(files.length, totalSizeMB, true);
+        
         toast({
           title: 'Merge failed',
           description: 'No files could be processed. Please check the error details below.',
@@ -63,6 +73,11 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       console.log('PDF merge completed');
     } catch (error) {
       console.error('Error merging PDFs:', error);
+      
+      // Log error case
+      const totalSizeMB = calculateTotalSizeMB(files);
+      logMergeActivity(files.length, totalSizeMB, true);
+      
       toast({
         title: 'Merge failed',
         description: 'There was an unexpected error merging your PDF files. Please try again.',
@@ -94,6 +109,11 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       }
     } catch (error) {
       console.error('Error detecting encrypted files:', error);
+      
+      // Log error case
+      const totalSizeMB = calculateTotalSizeMB(files);
+      logMergeActivity(files.length, totalSizeMB, true);
+      
       await performMerge(true);
     }
   };
