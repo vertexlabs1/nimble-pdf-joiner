@@ -16,7 +16,7 @@ import { processFileWithPages } from '@/utils/pdfPageUtils';
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
-  const [enhancedFiles, setEnhancedFiles] = useState<(PDFFileWithPages | null)[]>([]);
+  const [enhancedFiles, setEnhancedFiles] = useState<PDFFileWithPages[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [processingFiles, setProcessingFiles] = useState<boolean[]>([]);
 
@@ -38,60 +38,60 @@ const Index = () => {
       setProcessingFiles(new Array(files.length).fill(true));
       
       try {
-        const processed = await Promise.allSettled(
-          files.map(async (file, index) => {
-            console.log(`Processing file ${index}: ${file.name}`);
-            try {
-              const result = await processFileWithPages(file);
-              console.log(`Successfully processed ${file.name}:`, {
-                pageCount: result.pageCount,
-                pagesLength: result.pages.length,
-                isModified: result.isModified
-              });
-              return result;
-            } catch (error) {
-              console.error(`Error processing file ${file.name}:`, error);
-              // Return a basic file info even if processing fails
-              return {
-                originalFile: file,
-                pageCount: 1,
-                pages: [],
-                isModified: false,
-              } as PDFFileWithPages;
-            }
-          })
-        );
-
-        const results = processed.map((result, index) => {
-          if (result.status === 'fulfilled') {
-            console.log(`File ${index} processed successfully:`, result.value);
-            return result.value;
-          } else {
-            console.error(`File ${index} failed to process:`, result.reason);
-            // Return basic info for failed files
-            return {
-              originalFile: files[index],
+        const processPromises = files.map(async (file, index) => {
+          console.log(`Starting processing for file ${index}: ${file.name}`);
+          try {
+            const result = await processFileWithPages(file);
+            console.log(`Successfully processed ${file.name}:`, {
+              pageCount: result.pageCount,
+              pagesLength: result.pages.length,
+              isModified: result.isModified,
+              hasResult: !!result
+            });
+            return result;
+          } catch (error) {
+            console.error(`Error processing file ${file.name}:`, error);
+            // Return a basic file info even if processing fails
+            const fallback = {
+              originalFile: file,
               pageCount: 1,
               pages: [],
               isModified: false,
             } as PDFFileWithPages;
+            console.log(`Created fallback for ${file.name}:`, fallback);
+            return fallback;
           }
         });
 
-        console.log('=== SETTING ENHANCED FILES ===');
-        console.log('Results array:', results);
+        console.log('Waiting for all processing to complete...');
+        const results = await Promise.all(processPromises);
+        
+        console.log('=== ALL PROCESSING COMPLETE ===');
+        console.log('Results count:', results.length);
+        results.forEach((result, index) => {
+          console.log(`Result ${index}:`, {
+            fileName: result.originalFile.name,
+            pageCount: result.pageCount,
+            pagesLength: result.pages.length,
+            isValid: !!result
+          });
+        });
+
+        console.log('Setting enhanced files with results:', results);
         setEnhancedFiles(results);
+        console.log('Clearing processing flags');
         setProcessingFiles(new Array(files.length).fill(false));
         
       } catch (error) {
-        console.error('Error in processFiles:', error);
-        // Ensure we always have some result
+        console.error('Critical error in processFiles:', error);
+        // Ensure we always have some result to prevent UI from breaking
         const fallbackResults = files.map(file => ({
           originalFile: file,
           pageCount: 1,
           pages: [],
           isModified: false,
         }));
+        console.log('Setting fallback results:', fallbackResults);
         setEnhancedFiles(fallbackResults);
         setProcessingFiles(new Array(files.length).fill(false));
       }
@@ -102,22 +102,27 @@ const Index = () => {
 
   // Debug enhancedFiles changes
   useEffect(() => {
-    console.log('=== ENHANCED FILES CHANGED ===');
-    console.log('Enhanced files:', enhancedFiles);
+    console.log('=== ENHANCED FILES STATE CHANGED ===');
+    console.log('Enhanced files array:', enhancedFiles);
     console.log('Enhanced files length:', enhancedFiles.length);
+    console.log('Enhanced files are array?', Array.isArray(enhancedFiles));
     enhancedFiles.forEach((file, index) => {
-      if (file) {
-        console.log(`Enhanced file ${index}:`, {
-          name: file.originalFile.name,
-          pageCount: file.pageCount,
-          pagesLength: file.pages.length,
-          isModified: file.isModified
-        });
-      } else {
-        console.log(`Enhanced file ${index}: NULL`);
-      }
+      console.log(`Enhanced file ${index}:`, {
+        name: file?.originalFile?.name || 'NO NAME',
+        pageCount: file?.pageCount || 'NO COUNT',
+        pagesLength: file?.pages?.length || 'NO PAGES',
+        isModified: file?.isModified || false,
+        isValid: !!file
+      });
     });
   }, [enhancedFiles]);
+
+  // Debug processing state
+  useEffect(() => {
+    console.log('=== PROCESSING STATE CHANGED ===');
+    console.log('Processing files:', processingFiles);
+    console.log('Any still processing?', processingFiles.some(Boolean));
+  }, [processingFiles]);
 
   const handleFilesAdded = (newFiles: File[]) => {
     console.log('Adding new files:', newFiles.map(f => f.name));
