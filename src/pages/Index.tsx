@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PDFUploader } from '@/components/PDFUploader';
 import { FileList } from '@/components/FileList';
 import { MergeButton } from '@/components/MergeButton';
@@ -11,10 +11,36 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
 import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
+import { PDFFileWithPages } from '@/types/pdf';
+import { processFileWithPages } from '@/utils/pdfPageUtils';
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
+  const [enhancedFiles, setEnhancedFiles] = useState<(PDFFileWithPages | null)[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Process files to extract page information
+  useEffect(() => {
+    const processFiles = async () => {
+      const processed = await Promise.all(
+        files.map(async (file) => {
+          try {
+            return await processFileWithPages(file);
+          } catch (error) {
+            console.error('Error processing file:', file.name, error);
+            return null;
+          }
+        })
+      );
+      setEnhancedFiles(processed);
+    };
+
+    if (files.length > 0) {
+      processFiles();
+    } else {
+      setEnhancedFiles([]);
+    }
+  }, [files]);
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
@@ -30,6 +56,15 @@ const Index = () => {
 
   const handleClear = () => {
     setFiles([]);
+    setEnhancedFiles([]);
+  };
+
+  const handleFileUpdate = (index: number, updatedFile: PDFFileWithPages) => {
+    setEnhancedFiles(prev => {
+      const newEnhanced = [...prev];
+      newEnhanced[index] = updatedFile;
+      return newEnhanced;
+    });
   };
 
   return (
@@ -103,8 +138,10 @@ const Index = () => {
                 </div>
                 <FileList
                   files={files}
+                  enhancedFiles={enhancedFiles}
                   onReorder={handleReorder}
                   onRemove={handleRemove}
+                  onFileUpdate={handleFileUpdate}
                   disabled={isLoading}
                 />
               </Card>

@@ -20,21 +20,27 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { FileText, GripVertical, X } from 'lucide-react';
+import { FileText, GripVertical, X, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { PDFFileWithPages } from '@/types/pdf';
+import { PageEditModal } from '@/components/PageEditModal';
 
 interface FileListProps {
   files: File[];
+  enhancedFiles?: PDFFileWithPages[];
   onReorder: (files: File[]) => void;
   onRemove: (index: number) => void;
+  onFileUpdate?: (index: number, updatedFile: PDFFileWithPages) => void;
   disabled?: boolean;
 }
 
 interface SortableFileItemProps {
   file: File;
+  enhancedFile?: PDFFileWithPages;
   index: number;
   onRemove: (index: number) => void;
+  onEdit?: () => void;
   disabled?: boolean;
   isDragOverlay?: boolean;
 }
@@ -44,7 +50,16 @@ const generateFileId = (file: File, index: number): string => {
   return `${file.name}-${file.size}-${file.lastModified}-${index}`;
 };
 
-const SortableFileItem = ({ file, index, onRemove, disabled, isDragOverlay = false }: SortableFileItemProps) => {
+const SortableFileItem = ({ 
+  file, 
+  enhancedFile, 
+  index, 
+  onRemove, 
+  onEdit, 
+  disabled, 
+  isDragOverlay = false 
+}: SortableFileItemProps) => {
+  const [isHovered, setIsHovered] = useState(false);
   const fileId = generateFileId(file, index);
   
   const {
@@ -72,6 +87,9 @@ const SortableFileItem = ({ file, index, onRemove, disabled, isDragOverlay = fal
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const isMultiPage = enhancedFile && enhancedFile.pageCount > 1;
+  const showEditButton = isMultiPage && onEdit;
+
   return (
     <div
       ref={setNodeRef}
@@ -82,6 +100,8 @@ const SortableFileItem = ({ file, index, onRemove, disabled, isDragOverlay = fal
         ${isDragOverlay ? 'shadow-xl ring-2 ring-blue-300 scale-105' : 'hover:shadow-md'}
         ${disabled ? 'opacity-60' : ''}
       `}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <div
         {...attributes}
@@ -99,8 +119,18 @@ const SortableFileItem = ({ file, index, onRemove, disabled, isDragOverlay = fal
           <FileText className="h-5 w-5 text-red-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 truncate">{file.name}</p>
-          <p className="text-sm text-gray-500">{formatFileSize(file.size)}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-gray-900 truncate">{file.name}</p>
+            {enhancedFile?.isModified && (
+              <span className="inline-block w-2 h-2 bg-blue-500 rounded-full" title="Modified" />
+            )}
+          </div>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>{formatFileSize(file.size)}</span>
+            {isMultiPage && (
+              <span>• {enhancedFile.pageCount} pages</span>
+            )}
+          </div>
         </div>
       </div>
       
@@ -108,6 +138,25 @@ const SortableFileItem = ({ file, index, onRemove, disabled, isDragOverlay = fal
         <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
           #{index + 1}
         </span>
+        
+        {/* Edit button - shows on hover for desktop, always visible on touch devices for multi-page PDFs */}
+        {showEditButton && !isDragOverlay && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEdit}
+            disabled={disabled}
+            className={`
+              text-gray-400 hover:text-blue-600 p-1 h-8 w-8 transition-opacity
+              ${isHovered ? 'opacity-100' : 'opacity-0 md:opacity-0'}
+              ${isMultiPage ? 'sm:opacity-100 md:opacity-0 md:hover:opacity-100' : ''}
+            `}
+            title="Edit pages"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        )}
+        
         {!isDragOverlay && (
           <Button
             variant="ghost"
@@ -124,9 +173,17 @@ const SortableFileItem = ({ file, index, onRemove, disabled, isDragOverlay = fal
   );
 };
 
-export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps) => {
+export const FileList = ({ 
+  files, 
+  enhancedFiles, 
+  onReorder, 
+  onRemove, 
+  onFileUpdate, 
+  disabled 
+}: FileListProps) => {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draggedFile, setDraggedFile] = useState<{ file: File; index: number } | null>(null);
+  const [editingFileIndex, setEditingFileIndex] = useState<number | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -165,10 +222,26 @@ export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps
     }
   };
 
+  const handleEditFile = (index: number) => {
+    setEditingFileIndex(index);
+  };
+
+  const handleFileUpdate = (updatedFile: PDFFileWithPages) => {
+    if (editingFileIndex !== null && onFileUpdate) {
+      onFileUpdate(editingFileIndex, updatedFile);
+    }
+    setEditingFileIndex(null);
+  };
+
   return (
     <div className="space-y-3">
       <div className="text-sm text-gray-600 mb-4">
         Drag files to reorder them. The merged PDF will follow this order.
+        {enhancedFiles?.some(f => f && f.pageCount > 1) && (
+          <span className="block text-xs text-blue-600 mt-1">
+            💡 Click the edit icon on multi-page PDFs to replace individual pages
+          </span>
+        )}
       </div>
       
       <DndContext
@@ -186,8 +259,10 @@ export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps
               <SortableFileItem
                 key={generateFileId(file, index)}
                 file={file}
+                enhancedFile={enhancedFiles?.[index]}
                 index={index}
                 onRemove={onRemove}
+                onEdit={() => handleEditFile(index)}
                 disabled={disabled}
               />
             ))}
@@ -198,6 +273,7 @@ export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps
           {activeId && draggedFile ? (
             <SortableFileItem
               file={draggedFile.file}
+              enhancedFile={enhancedFiles?.[draggedFile.index]}
               index={draggedFile.index}
               onRemove={onRemove}
               disabled={disabled}
@@ -206,6 +282,17 @@ export const FileList = ({ files, onReorder, onRemove, disabled }: FileListProps
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Page Edit Modal */}
+      {editingFileIndex !== null && enhancedFiles?.[editingFileIndex] && (
+        <PageEditModal
+          open={true}
+          onOpenChange={(open) => !open && setEditingFileIndex(null)}
+          file={enhancedFiles[editingFileIndex]}
+          allFiles={enhancedFiles.filter(Boolean) as PDFFileWithPages[]}
+          onFileUpdate={handleFileUpdate}
+        />
+      )}
     </div>
   );
 };
