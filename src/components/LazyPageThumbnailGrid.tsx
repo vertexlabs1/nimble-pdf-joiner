@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PDFFileWithPages } from '@/types/pdf';
 import { Edit, X } from 'lucide-react';
-import { generatePageThumbnails } from '@/utils/pdfPageUtils';
+import * as pdfjsLib from 'pdfjs-dist';
 
 interface LazyPageThumbnailGridProps {
   file: PDFFileWithPages;
@@ -18,8 +18,9 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
   const [isLoading, setIsLoading] = useState(false);
   const [loadingCancelled, setCancelled] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const pdfDocumentRef = useRef<any>(null);
 
-  // Progressive thumbnail loading
+  // Progressive thumbnail loading with single PDF load
   useEffect(() => {
     const loadThumbnailsProgressively = async () => {
       if (file.pages.length === 0) return;
@@ -30,7 +31,7 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
         return;
       }
 
-      console.log('Starting progressive thumbnail loading for:', file.originalFile.name);
+      console.log('Starting optimized progressive thumbnail loading for:', file.originalFile.name);
       setIsLoading(true);
       setCancelled(false);
       setLoadingProgress(0);
@@ -38,12 +39,31 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
       // Create abort controller for cancellation
       abortControllerRef.current = new AbortController();
       
-      // Initialize empty thumbnails array
-      const newThumbnails: string[] = new Array(file.pages.length).fill('');
-      setThumbnails(newThumbnails);
+      // Initialize placeholder thumbnails immediately
+      const placeholderThumbnails = file.pages.map((_, index) => 
+        createPlaceholderThumbnail(index + 1)
+      );
+      setThumbnails(placeholderThumbnails);
 
       try {
-        // Load thumbnails one by one with progress updates
+        // Load PDF document ONCE at the start
+        console.log('Loading PDF document...');
+        const arrayBuffer = await file.originalFile.arrayBuffer();
+        
+        if (abortControllerRef.current?.signal.aborted || loadingCancelled) {
+          console.log('PDF loading cancelled');
+          return;
+        }
+
+        pdfDocumentRef.current = await pdfjsLib.getDocument({ 
+          data: arrayBuffer,
+          useSystemFonts: true, // Faster rendering
+          disableFontFace: true // Skip font loading for speed
+        }).promise;
+        
+        console.log('PDF document loaded, starting thumbnail generation...');
+
+        // Now render thumbnails sequentially using the cached PDF
         for (let i = 0; i < file.pages.length; i++) {
           if (abortControllerRef.current?.signal.aborted || loadingCancelled) {
             console.log('Thumbnail loading cancelled');
@@ -51,15 +71,15 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
           }
 
           try {
-            console.log(`Loading thumbnail ${i + 1}/${file.pages.length}`);
+            console.log(`Rendering thumbnail ${i + 1}/${file.pages.length}`);
             
-            // Generate single thumbnail with timeout
-            const thumbnailPromise = generateSingleThumbnail(file.originalFile, i + 1);
-            const timeoutPromise = new Promise<string>((_, reject) => 
-              setTimeout(() => reject(new Error('Timeout')), 10000) // 10 second timeout per thumbnail
-            );
-            
-            const thumbnail = await Promise.race([thumbnailPromise, timeoutPromise]);
+            // Generate thumbnail with fast timeout
+            const thumbnail = await Promise.race([
+              renderSingleThumbnail(pdfDocumentRef.current, i + 1),
+              new Promise<string>((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 2000) // 2 second timeout
+              )
+            ]);
             
             // Update thumbnails array progressively
             setThumbnails(prev => {
@@ -70,8 +90,8 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
             
             setLoadingProgress(((i + 1) / file.pages.length) * 100);
             
-            // Small delay between thumbnails to prevent blocking
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Small delay to prevent UI blocking
+            await new Promise(resolve => setTimeout(resolve, 50));
             
           } catch (error) {
             console.warn(`Failed to load thumbnail ${i + 1}:`, error);
@@ -80,9 +100,11 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
         }
         
       } catch (error) {
-        console.error('Error in progressive thumbnail loading:', error);
+        console.error('Error loading PDF document:', error);
       } finally {
         setIsLoading(false);
+        // Clean up PDF document reference
+        pdfDocumentRef.current = null;
       }
     };
 
@@ -93,6 +115,7 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      pdfDocumentRef.current = null;
     };
   }, [file, loadingCancelled]);
 
@@ -103,6 +126,7 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
       abortControllerRef.current.abort();
     }
     setIsLoading(false);
+    pdfDocumentRef.current = null;
   };
 
   return (
@@ -131,7 +155,7 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
             />
           </div>
           <p className="text-xs text-blue-600 mt-1">
-            Thumbnails will appear as they load. You can edit pages even while loading.
+            Thumbnails appear as they load. You can edit pages immediately.
           </p>
         </div>
       )}
@@ -147,21 +171,15 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
             onClick={() => onPageEdit(index)}
           >
             <div className="relative bg-white border-2 border-gray-200 rounded-lg overflow-hidden hover:border-blue-300 transition-colors">
-              {/* Show thumbnail if available, otherwise skeleton */}
-              {thumbnails[index] ? (
+              {/* Show thumbnail - either real or placeholder */}
+              <div className="w-full aspect-[3/4]">
                 <img
-                  src={thumbnails[index]}
+                  src={thumbnails[index] || createPlaceholderThumbnail(page.pageNumber)}
                   alt={`Page ${page.pageNumber}`}
-                  className="w-full h-auto object-contain"
+                  className="w-full h-full object-contain"
                   loading="lazy"
                 />
-              ) : (
-                <div className="w-full aspect-[3/4]">
-                  <Skeleton className="w-full h-full flex items-center justify-center">
-                    <span className="text-sm text-gray-500">{page.pageNumber}</span>
-                  </Skeleton>
-                </div>
-              )}
+              </div>
               
               {/* Hover overlay */}
               <div className={`
@@ -208,21 +226,17 @@ export const LazyPageThumbnailGrid = ({ file, onPageEdit }: LazyPageThumbnailGri
   );
 };
 
-// Helper function to generate a single thumbnail
-const generateSingleThumbnail = async (file: File, pageNumber: number): Promise<string> => {
-  const pdfjsLib = await import('pdfjs-dist');
-  
+// Optimized thumbnail rendering using cached PDF document
+const renderSingleThumbnail = async (pdfDocument: any, pageNumber: number): Promise<string> => {
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const page = await pdfDocument.getPage(pageNumber);
     
-    // Use smaller scale for faster rendering
-    const viewport = page.getViewport({ scale: 0.3 });
+    // Use very small scale for fast rendering
+    const viewport = page.getViewport({ scale: 0.25 });
     
-    // Limit canvas size for performance
-    const maxSize = 100;
-    const scale = Math.min(maxSize / viewport.width, maxSize / viewport.height, 0.3);
+    // Limit canvas size even more for speed
+    const maxSize = 80;
+    const scale = Math.min(maxSize / viewport.width, maxSize / viewport.height, 0.25);
     const scaledViewport = page.getViewport({ scale });
     
     const canvas = document.createElement('canvas');
@@ -240,35 +254,46 @@ const generateSingleThumbnail = async (file: File, pageNumber: number): Promise<
       viewport: scaledViewport,
     }).promise;
     
-    return canvas.toDataURL('image/jpeg', 0.6); // Lower quality for speed
+    const result = canvas.toDataURL('image/jpeg', 0.5); // Lower quality for speed
+    
+    // Clean up canvas
+    canvas.width = 0;
+    canvas.height = 0;
+    
+    return result;
     
   } catch (error) {
-    console.warn(`Failed to generate thumbnail for page ${pageNumber}:`, error);
-    // Return simple placeholder on error
-    return createPlaceholderThumbnail(pageNumber);
+    console.warn(`Failed to render thumbnail for page ${pageNumber}:`, error);
+    throw error;
   }
 };
 
 const createPlaceholderThumbnail = (pageNumber: number): string => {
   const canvas = document.createElement('canvas');
-  canvas.width = 100;
-  canvas.height = 133;
+  canvas.width = 80;
+  canvas.height = 106;
   const ctx = canvas.getContext('2d');
   
   if (ctx) {
     ctx.fillStyle = '#f8f9fa';
-    ctx.fillRect(0, 0, 100, 133);
+    ctx.fillRect(0, 0, 80, 106);
     
     ctx.strokeStyle = '#e9ecef';
     ctx.lineWidth = 1;
-    ctx.strokeRect(0, 0, 100, 133);
+    ctx.strokeRect(0, 0, 80, 106);
     
     ctx.fillStyle = '#6c757d';
     ctx.font = '12px Arial';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${pageNumber}`, 50, 66);
+    ctx.fillText(`${pageNumber}`, 40, 53);
   }
   
-  return canvas.toDataURL('image/png');
+  const result = canvas.toDataURL('image/png');
+  
+  // Clean up canvas
+  canvas.width = 0;
+  canvas.height = 0;
+  
+  return result;
 };
