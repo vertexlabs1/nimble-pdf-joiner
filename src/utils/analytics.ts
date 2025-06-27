@@ -1,5 +1,5 @@
 
-// Google Apps Script logging utility for tracking PDF merge usage
+// Zapier webhook logging utility for tracking PDF merge usage
 export async function logMergeActivity(fileCount: number, totalSizeMB: number, error = false) {
   // Don't attempt analytics if we don't have valid parameters
   if (fileCount <= 0 || totalSizeMB < 0) {
@@ -7,54 +7,42 @@ export async function logMergeActivity(fileCount: number, totalSizeMB: number, e
     return;
   }
 
-  const LOG_ENDPOINT = import.meta.env.PUBLIC_LOG_URL || "https://script.google.com/macros/s/AKfycbxC_KnCFTMcryLIBEzgAnaYrEG0vRLN38w2QTzxS7F5ZhOtT-8ggneM7PRJ9AtpEEckCg/exec";
+  const ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/12967732/ub5oyzh/";
   
-  // Send data directly without the contents wrapper
+  // Prepare payload for Zapier webhook
   const payload = {
     file_count: fileCount,
-    total_size: totalSizeMB,
-    error: error // Send boolean instead of "Yes"/"No" string
+    total_size_mb: totalSizeMB,
+    error: error,
+    timestamp: new Date().toISOString(),
+    user_agent: navigator.userAgent,
+    app_url: window.location.origin
   };
 
-  console.log('Attempting to send analytics data:', payload);
+  console.log('Sending analytics data to Zapier:', payload);
 
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-    const res = await fetch(LOG_ENDPOINT, {
+    const res = await fetch(ZAPIER_WEBHOOK_URL, {
       method: "POST",
       body: JSON.stringify(payload),
       headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
+        "Content-Type": "application/json"
       },
       signal: controller.signal,
-      mode: 'cors' // Explicitly set CORS mode
+      mode: 'no-cors' // Zapier webhooks work well with no-cors
     });
 
     clearTimeout(timeoutId);
-
-    if (!res.ok) {
-      console.warn(`Analytics request failed with status ${res.status}:`, res.statusText);
-      return;
-    }
-
-    const result = await res.text();
-    console.log('Analytics response:', result);
+    console.log('Analytics data sent to Zapier successfully');
     
-    if (result !== "Success") {
-      console.warn("Analytics logging failed with response:", result);
-    } else {
-      console.log("Analytics logged successfully");
-    }
   } catch (err) {
     // Silently handle analytics failures - don't break the app
     if (err instanceof Error) {
       if (err.name === 'AbortError') {
         console.warn("Analytics request timed out");
-      } else if (err.message.includes('CORS')) {
-        console.warn("Analytics blocked by CORS policy - this is expected in development");
       } else {
         console.warn("Analytics logging failed:", err.message);
       }
