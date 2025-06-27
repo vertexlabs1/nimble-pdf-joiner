@@ -1,50 +1,67 @@
-
 import { PDFDocument } from 'pdf-lib';
 import { PDFPageInfo, PDFFileWithPages } from '@/types/pdf';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker with better error handling
+try {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+} catch (error) {
+  console.warn('Failed to set PDF.js worker source:', error);
+}
 
 export const generatePageThumbnails = async (file: File): Promise<PDFPageInfo[]> => {
+  console.log('Starting thumbnail generation for:', file.name);
+  
   try {
     const arrayBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(arrayBuffer);
     const pageCount = pdfDoc.getPageCount();
     const pages: PDFPageInfo[] = [];
 
-    // Load PDF with PDF.js for rendering thumbnails
-    const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    console.log(`PDF loaded successfully, ${pageCount} pages found`);
+
+    // Try to load PDF with PDF.js for rendering thumbnails
+    let pdfDocument = null;
+    try {
+      pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      console.log('PDF.js document loaded successfully');
+    } catch (pdfJsError) {
+      console.warn('PDF.js failed to load document, using placeholders only:', pdfJsError);
+    }
 
     for (let i = 0; i < pageCount; i++) {
       const page = pdfDoc.getPage(i);
       const { width, height } = page.getSize();
       
-      try {
-        // Render actual page thumbnail using PDF.js
-        const thumbnail = await renderActualPageThumbnail(pdfDocument, i + 1);
-        
-        pages.push({
-          pageNumber: i + 1,
-          thumbnail,
-          width,
-          height,
-        });
-      } catch (error) {
-        console.warn(`Failed to render page ${i + 1}, using placeholder:`, error);
-        // Fall back to placeholder if rendering fails
-        pages.push({
-          pageNumber: i + 1,
-          thumbnail: createPlaceholderThumbnail(i + 1),
-          width,
-          height,
-        });
+      let thumbnail: string;
+      
+      if (pdfDocument) {
+        try {
+          // Try to render actual page thumbnail using PDF.js
+          thumbnail = await renderActualPageThumbnail(pdfDocument, i + 1);
+          console.log(`Successfully rendered thumbnail for page ${i + 1}`);
+        } catch (error) {
+          console.warn(`Failed to render page ${i + 1}, using placeholder:`, error);
+          thumbnail = createPlaceholderThumbnail(i + 1);
+        }
+      } else {
+        // Use placeholder if PDF.js didn't load
+        thumbnail = createPlaceholderThumbnail(i + 1);
       }
+      
+      pages.push({
+        pageNumber: i + 1,
+        thumbnail,
+        width,
+        height,
+      });
     }
 
+    console.log(`Generated ${pages.length} page thumbnails`);
     return pages;
   } catch (error) {
     console.error('Error generating thumbnails:', error);
+    // Return empty array but don't throw - let the parent function handle it
     return [];
   }
 };
@@ -150,13 +167,60 @@ const createPlaceholderThumbnail = (pageNumber: number): string => {
 };
 
 export const processFileWithPages = async (file: File): Promise<PDFFileWithPages> => {
-  const pages = await generatePageThumbnails(file);
+  console.log('Processing file with pages:', file.name);
   
+  try {
+    // First, try to get basic page count using pdf-lib
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(arrayBuffer);
+    const pageCount = pdfDoc.getPageCount();
+    
+    console.log(`File ${file.name} has ${pageCount} pages`);
+    
+    // Try to generate thumbnails
+    const pages = await generatePageThumbnails(file);
+    
+    // Always return a valid object, even if thumbnail generation failed
+    const result: PDFFileWithPages = {
+      originalFile: file,
+      pageCount,
+      pages: pages.length > 0 ? pages : createFallbackPages(pageCount),
+      isModified: false,
+    };
+    
+    console.log('Successfully processed file:', file.name, 'with', result.pages.length, 'page thumbnails');
+    return result;
+    
+  } catch (error) {
+    console.error('Error processing file:', file.name, error);
+    
+    // Even if everything fails, return a basic object with minimal info
+    // This ensures the file still shows up with an edit button
+    return {
+      originalFile: file,
+      pageCount: 1, // Assume at least 1 page
+      pages: [createFallbackPageInfo(1)],
+      isModified: false,
+    };
+  }
+};
+
+// Helper function to create fallback pages when thumbnail generation fails
+const createFallbackPages = (pageCount: number): PDFPageInfo[] => {
+  const pages: PDFPageInfo[] = [];
+  for (let i = 1; i <= pageCount; i++) {
+    pages.push(createFallbackPageInfo(i));
+  }
+  return pages;
+};
+
+// Helper function to create a single fallback page info
+const createFallbackPageInfo = (pageNumber: number): PDFPageInfo => {
   return {
-    originalFile: file,
-    pageCount: pages.length,
-    pages,
-    isModified: false,
+    pageNumber,
+    thumbnail: createPlaceholderThumbnail(pageNumber),
+    width: 595, // Standard A4 width in points
+    height: 842, // Standard A4 height in points
   };
 };
 
