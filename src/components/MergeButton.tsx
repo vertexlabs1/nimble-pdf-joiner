@@ -22,6 +22,7 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   const { toast } = useToast();
 
   const performMerge = async (includeEncrypted: boolean = true) => {
+    console.log('Starting performMerge with', files.length, 'files');
     setIsLoading(true);
     setMergeResult(null);
 
@@ -32,9 +33,13 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
       setMergeResult(result);
       
       const totalSizeMB = calculateTotalSizeMB(files);
+      console.log('Calculated total file size:', totalSizeMB, 'MB');
 
       if (result.success) {
-        await logMergeActivity(files.length, totalSizeMB, false); // ✅ Await here
+        // Only log successful merges - don't await to avoid blocking UI
+        logMergeActivity(files.length, totalSizeMB, false).catch(err => {
+          console.warn('Analytics logging failed silently:', err);
+        });
 
         const defaultName = files.length > 0 
           ? `merged-${files[0].name.replace('.pdf', '')}.pdf`
@@ -58,7 +63,11 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
           });
         }
       } else {
-        await logMergeActivity(files.length, totalSizeMB, true); // ✅ Await here
+        // Only log actual merge failures - don't await to avoid blocking UI
+        logMergeActivity(files.length, totalSizeMB, true).catch(err => {
+          console.warn('Analytics logging failed silently:', err);
+        });
+        
         toast({
           title: 'Merge failed',
           description: 'No files could be processed. Please check the error details below.',
@@ -70,7 +79,12 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     } catch (error) {
       console.error('Error merging PDFs:', error);
       const totalSizeMB = calculateTotalSizeMB(files);
-      await logMergeActivity(files.length, totalSizeMB, true); // ✅ Await here
+      
+      // Log the error but don't let analytics failure break the app
+      logMergeActivity(files.length, totalSizeMB, true).catch(err => {
+        console.warn('Analytics logging failed silently:', err);
+      });
+      
       toast({
         title: 'Merge failed',
         description: 'There was an unexpected error merging your PDF files. Please try again.',
@@ -92,18 +106,20 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     }
 
     try {
+      console.log('Detecting encrypted files...');
       const detectedEncryptedFiles = await detectEncryptedFiles(files);
 
       if (detectedEncryptedFiles.length > 0) {
+        console.log('Found encrypted files:', detectedEncryptedFiles.map(f => f.name));
         setEncryptedFiles(detectedEncryptedFiles);
         setShowEncryptedDialog(true);
       } else {
+        console.log('No encrypted files detected, proceeding with merge');
         await performMerge(true);
       }
     } catch (error) {
       console.error('Error detecting encrypted files:', error);
-      const totalSizeMB = calculateTotalSizeMB(files);
-      await logMergeActivity(files.length, totalSizeMB, true); // ✅ Await here too
+      // Don't log analytics for detection errors, only for actual merge attempts
       await performMerge(true);
     }
   };
