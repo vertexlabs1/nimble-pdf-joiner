@@ -135,11 +135,12 @@ const SortableFileItem = ({
       </div>
       
       <div className="flex items-center gap-2">
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+        {/* Page number with fixed width for consistent alignment */}
+        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded w-10 text-center">
           #{index + 1}
         </span>
         
-        {/* Edit button - shows on hover for desktop, always visible on touch devices for multi-page PDFs */}
+        {/* Edit button - simplified visibility logic */}
         {showEditButton && (
           <Button
             variant="ghost"
@@ -147,10 +148,9 @@ const SortableFileItem = ({
             onClick={onEdit}
             disabled={disabled}
             className={`
-              text-gray-400 hover:text-blue-600 p-2 h-8 w-8 transition-all duration-200
-              md:opacity-0 md:hover:opacity-100
+              text-gray-400 hover:text-blue-600 p-2 h-8 w-8 transition-opacity duration-200
+              opacity-100 md:opacity-0 md:hover:opacity-100
               ${isHovered ? 'md:opacity-100' : ''}
-              ${isMultiPage ? 'opacity-100 md:opacity-0' : 'opacity-0'}
             `}
             title="Edit pages"
           >
