@@ -3,7 +3,7 @@
   "name": "Merge PDF Securely",
   "short_name": "PDF Merger",
   "description": "Merge multiple PDF files securely and privately in your browser",
-  "start_url": "/?forceHideBadge=true",
+  "start_url": "https://www.mergepdfsecurely.com/?forceHideBadge=true",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#059669",
