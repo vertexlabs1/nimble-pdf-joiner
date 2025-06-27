@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { PDFFileWithPages } from '@/types/pdf';
 import { PageThumbnailGrid } from '@/components/PageThumbnailGrid';
 import { PageReplacementModal } from '@/components/PageReplacementModal';
-import { X } from 'lucide-react';
 
 interface PageEditModalProps {
   open: boolean;
@@ -41,16 +40,8 @@ export const PageEditModal = ({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Edit Pages - {file.originalFile.name}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenChange(false)}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+            <DialogTitle>
+              Edit Pages - {file.originalFile.name}
             </DialogTitle>
           </DialogHeader>
           

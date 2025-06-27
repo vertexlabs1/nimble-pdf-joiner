@@ -1,4 +1,3 @@
-
 import {
   DndContext,
   closestCenter,
@@ -118,8 +117,12 @@ const SortableFileItem = ({
       </div>
       
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="bg-red-100 p-2 rounded">
+        <div className="bg-red-100 p-2 rounded relative">
           <FileText className="h-5 w-5 text-red-600" />
+          {/* Page number positioned beside the red thumbnail */}
+          <div className="absolute -bottom-1 -right-1 bg-gray-700 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+            #{index + 1}
+          </div>
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -138,13 +141,6 @@ const SortableFileItem = ({
       </div>
       
       <div className="flex items-center gap-2">
-        {/* Page number with fixed width for consistent alignment */}
-        <div className="min-w-12 flex justify-center items-center flex-shrink-0">
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-            #{index + 1}
-          </span>
-        </div>
-        
         {/* Edit button - always visible for multi-page PDFs */}
         {showEditButton && (
           <Button

@@ -1,4 +1,3 @@
-
 import { PDFDocument } from 'pdf-lib';
 import { PDFPageInfo, PDFFileWithPages } from '@/types/pdf';
 
@@ -37,19 +36,43 @@ const createPlaceholderThumbnail = (pageNumber: number): string => {
   const ctx = canvas.getContext('2d');
   
   if (ctx) {
-    // Create a simple placeholder thumbnail
-    ctx.fillStyle = '#f8f9fa';
+    // Create a better-looking placeholder thumbnail
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, 150, 200);
-    ctx.strokeStyle = '#dee2e6';
-    ctx.strokeRect(0, 0, 150, 200);
     
-    ctx.fillStyle = '#6c757d';
-    ctx.font = '16px Arial';
+    // Add border
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, 148, 198);
+    
+    // Add subtle shadow effect
+    ctx.fillStyle = '#f3f4f6';
+    ctx.fillRect(5, 5, 140, 190);
+    
+    // Add main content area
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(10, 10, 130, 180);
+    
+    // Add page number in center
+    ctx.fillStyle = '#374151';
+    ctx.font = 'bold 18px Arial';
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(`Page ${pageNumber}`, 75, 100);
+    
+    // Add some decorative lines to make it look more like a document
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const y = 120 + (i * 8);
+      ctx.beginPath();
+      ctx.moveTo(20, y);
+      ctx.lineTo(130, y);
+      ctx.stroke();
+    }
   }
   
-  return canvas.toDataURL();
+  return canvas.toDataURL('image/png');
 };
 
 export const processFileWithPages = async (file: File): Promise<PDFFileWithPages> => {
