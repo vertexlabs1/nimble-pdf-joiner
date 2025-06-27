@@ -3,29 +3,34 @@
 export async function logMergeActivity(fileCount: number, totalSizeMB: number, error = false) {
   const LOG_ENDPOINT = import.meta.env.PUBLIC_LOG_URL || "https://script.google.com/macros/s/AKfycbzuzU_D36YDFN4_6X0xU7drV7GcQW8l6fhQW6vF5jxekTXjJ4hrmVYMr1GPh6mKonW6mA/exec";
   
+  // Send data directly without the contents wrapper
   const payload = {
-    contents: JSON.stringify({
-      file_count: fileCount,
-      total_size: totalSizeMB,
-      error: error ? "Yes" : "No"
-    })
+    file_count: fileCount,
+    total_size: totalSizeMB,
+    error: error // Send boolean instead of "Yes"/"No" string
   };
+
+  console.log('Sending analytics data:', payload);
 
   try {
     const res = await fetch(LOG_ENDPOINT, {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: JSON.stringify(payload), // Send payload directly, not wrapped in contents
       headers: {
         "Content-Type": "application/json"
       }
     });
 
     const result = await res.text();
+    console.log('Analytics response:', result);
+    
     if (result !== "Success") {
-      console.warn("Logging failed:", result);
+      console.warn("Logging failed with response:", result);
+    } else {
+      console.log("Analytics logged successfully");
     }
   } catch (err) {
-    console.error("Merge log failed:", err);
+    console.error("Analytics logging failed:", err);
   }
 }
 
