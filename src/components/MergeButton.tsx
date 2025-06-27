@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { FileText, Loader2 } from 'lucide-react';
@@ -21,9 +20,6 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFileInfo[]>([]);
   const [customFilename, setCustomFilename] = useState('merged-document.pdf');
   const { toast } = useToast();
-
-  // Ensure fallback endpoint is passed into env for safety
-  const LOG_ENDPOINT = import.meta.env.PUBLIC_LOG_URL || "https://script.google.com/macros/s/AKfycbzuzU_D36YDFN4_6X0xU7drV7GcQW8l6fhQW6vF5jxekTXjJ4hrmVYMr1GPh6mKonW6mA/exec";
 
   const performMerge = async (includeEncrypted: boolean = true) => {
     setIsLoading(true);
