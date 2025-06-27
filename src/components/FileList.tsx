@@ -88,7 +88,7 @@ const SortableFileItem = ({
   };
 
   const isMultiPage = enhancedFile && enhancedFile.pageCount > 1;
-  const showEditButton = isMultiPage && onEdit;
+  const showEditButton = isMultiPage && onEdit && !isDragOverlay;
 
   return (
     <div
@@ -127,8 +127,8 @@ const SortableFileItem = ({
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <span>{formatFileSize(file.size)}</span>
-            {isMultiPage && (
-              <span>• {enhancedFile.pageCount} pages</span>
+            {enhancedFile && enhancedFile.pageCount > 0 && (
+              <span>• {enhancedFile.pageCount} page{enhancedFile.pageCount !== 1 ? 's' : ''}</span>
             )}
           </div>
         </div>
@@ -140,16 +140,17 @@ const SortableFileItem = ({
         </span>
         
         {/* Edit button - shows on hover for desktop, always visible on touch devices for multi-page PDFs */}
-        {showEditButton && !isDragOverlay && (
+        {showEditButton && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onEdit}
             disabled={disabled}
             className={`
-              text-gray-400 hover:text-blue-600 p-1 h-8 w-8 transition-opacity
-              ${isHovered ? 'opacity-100' : 'opacity-0 md:opacity-0'}
-              ${isMultiPage ? 'sm:opacity-100 md:opacity-0 md:hover:opacity-100' : ''}
+              text-gray-400 hover:text-blue-600 p-2 h-8 w-8 transition-all duration-200
+              md:opacity-0 md:hover:opacity-100
+              ${isHovered ? 'md:opacity-100' : ''}
+              ${isMultiPage ? 'opacity-100 md:opacity-0' : 'opacity-0'}
             `}
             title="Edit pages"
           >
@@ -157,17 +158,15 @@ const SortableFileItem = ({
           </Button>
         )}
         
-        {!isDragOverlay && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onRemove(index)}
-            disabled={disabled}
-            className="text-gray-400 hover:text-red-600 p-1 h-8 w-8"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onRemove(index)}
+          disabled={disabled}
+          className="text-gray-400 hover:text-red-600 p-2 h-8 w-8"
+        >
+          <X className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
@@ -233,11 +232,13 @@ export const FileList = ({
     setEditingFileIndex(null);
   };
 
+  const hasMultiPageFiles = enhancedFiles?.some(f => f && f.pageCount > 1);
+
   return (
     <div className="space-y-3">
       <div className="text-sm text-gray-600 mb-4">
         Drag files to reorder them. The merged PDF will follow this order.
-        {enhancedFiles?.some(f => f && f.pageCount > 1) && (
+        {hasMultiPageFiles && (
           <span className="block text-xs text-blue-600 mt-1">
             💡 Click the edit icon on multi-page PDFs to replace individual pages
           </span>
