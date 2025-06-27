@@ -1,6 +1,6 @@
 // Google Apps Script logging utility for tracking PDF merge usage
 export async function logMergeActivity(fileCount: number, totalSizeMB: number, error = false) {
-  const LOG_ENDPOINT = import.meta.env.PUBLIC_LOG_URL || "https://script.google.com/macros/s/AKfycbwxTgAkyR5iMKcrx3D6AYXlq1AbNmGPfjocUU7n8x8-DLiILlSidcLurBbGAM6VpKSF2A/exec";
+  const LOG_ENDPOINT = import.meta.env.PUBLIC_LOG_URL || "https://script.google.com/macros/s/AKfycbxC_KnCFTMcryLIBEzgAnaYrEG0vRLN38w2QTzxS7F5ZhOtT-8ggneM7PRJ9AtpEEckCg/exec";
   
   // Send data directly without the contents wrapper
   const payload = {
