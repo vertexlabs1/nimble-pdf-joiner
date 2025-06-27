@@ -1,9 +1,8 @@
 
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { PDFFileWithPages } from '@/types/pdf';
-import { PageThumbnailGrid } from '@/components/PageThumbnailGrid';
+import { LazyPageThumbnailGrid } from '@/components/LazyPageThumbnailGrid';
 import { PageReplacementModal } from '@/components/PageReplacementModal';
 
 interface PageEditModalProps {
@@ -47,10 +46,10 @@ export const PageEditModal = ({
           
           <div className="py-4">
             <p className="text-sm text-gray-600 mb-4">
-              Click on any page thumbnail to replace or remove it.
+              Click on any page thumbnail to replace or remove it. Thumbnails load automatically.
             </p>
             
-            <PageThumbnailGrid
+            <LazyPageThumbnailGrid
               file={file}
               onPageEdit={handlePageEdit}
             />

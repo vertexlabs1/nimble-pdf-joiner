@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
 import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
 import { PDFFileWithPages } from '@/types/pdf';
-import { processFileWithPages } from '@/utils/pdfPageUtils';
+import { getBasicFileInfo } from '@/utils/pdfPageUtils';
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -20,13 +20,12 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Process files to extract page information
+  // Fast basic processing - only get page counts, no thumbnails
   useEffect(() => {
     console.log('=== FILES CHANGED ===');
     console.log('New files array:', files.map(f => f.name));
-    console.log('Files length:', files.length);
     
-    const processFiles = async () => {
+    const processFilesBasic = async () => {
       if (files.length === 0) {
         console.log('No files to process, clearing enhanced files');
         setEnhancedFiles([]);
@@ -34,50 +33,24 @@ const Index = () => {
         return;
       }
 
-      console.log('Starting to process files...');
+      console.log('Starting basic processing (page counts only)...');
       setIsProcessing(true);
       
       try {
-        const results: PDFFileWithPages[] = [];
+        // Process all files in parallel for basic info
+        const basicInfoPromises = files.map(file => getBasicFileInfo(file));
+        const results = await Promise.all(basicInfoPromises);
         
-        // Process files sequentially to avoid overwhelming the browser
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          console.log(`Processing file ${i + 1}/${files.length}: ${file.name}`);
-          
-          try {
-            const result = await processFileWithPages(file);
-            console.log(`Successfully processed ${file.name}:`, {
-              pageCount: result.pageCount,
-              pagesLength: result.pages.length,
-              isModified: result.isModified
-            });
-            results.push(result);
-          } catch (error) {
-            console.error(`Error processing file ${file.name}:`, error);
-            // Create fallback enhanced file
-            const fallback: PDFFileWithPages = {
-              originalFile: file,
-              pageCount: 1,
-              pages: [],
-              isModified: false,
-            };
-            results.push(fallback);
-          }
-        }
-
-        console.log('=== ALL PROCESSING COMPLETE ===');
-        console.log('Final results:', results.map(r => ({
+        console.log('Basic processing complete:', results.map(r => ({
           name: r.originalFile.name,
-          pageCount: r.pageCount,
-          pagesLength: r.pages.length
+          pageCount: r.pageCount
         })));
 
         setEnhancedFiles(results);
         
       } catch (error) {
-        console.error('Critical error in processFiles:', error);
-        // Create fallback results for all files
+        console.error('Error in basic processing:', error);
+        // Create fallback results
         const fallbackResults: PDFFileWithPages[] = files.map(file => ({
           originalFile: file,
           pageCount: 1,
@@ -87,24 +60,12 @@ const Index = () => {
         setEnhancedFiles(fallbackResults);
       } finally {
         setIsProcessing(false);
-        console.log('Processing completed, clearing processing state');
+        console.log('Basic processing completed');
       }
     };
 
-    processFiles();
+    processFilesBasic();
   }, [files]);
-
-  // Debug enhancedFiles changes
-  useEffect(() => {
-    console.log('=== ENHANCED FILES STATE CHANGED ===');
-    console.log('Enhanced files length:', enhancedFiles.length);
-    console.log('Enhanced files:', enhancedFiles.map(f => ({
-      name: f.originalFile.name,
-      pageCount: f.pageCount,
-      pagesLength: f.pages.length,
-      isModified: f.isModified
-    })));
-  }, [enhancedFiles]);
 
   const handleFilesAdded = (newFiles: File[]) => {
     console.log('Adding new files:', newFiles.map(f => f.name));
