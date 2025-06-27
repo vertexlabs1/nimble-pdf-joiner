@@ -90,6 +90,9 @@ const SortableFileItem = ({
   const isMultiPage = enhancedFile && enhancedFile.pageCount > 1;
   const showEditButton = isMultiPage && onEdit && !isDragOverlay;
 
+  // Debug logging
+  console.log('File:', file.name, 'Enhanced:', enhancedFile, 'IsMultiPage:', isMultiPage, 'ShowEdit:', showEditButton);
+
   return (
     <div
       ref={setNodeRef}
@@ -136,22 +139,20 @@ const SortableFileItem = ({
       
       <div className="flex items-center gap-2">
         {/* Page number with fixed width for consistent alignment */}
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded w-10 text-center">
-          #{index + 1}
-        </span>
+        <div className="min-w-12 flex justify-center items-center flex-shrink-0">
+          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            #{index + 1}
+          </span>
+        </div>
         
-        {/* Edit button - simplified visibility logic */}
+        {/* Edit button - always visible for multi-page PDFs */}
         {showEditButton && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onEdit}
             disabled={disabled}
-            className={`
-              text-gray-400 hover:text-blue-600 p-2 h-8 w-8 transition-opacity duration-200
-              opacity-100 md:opacity-0 md:hover:opacity-100
-              ${isHovered ? 'md:opacity-100' : ''}
-            `}
+            className="text-gray-400 hover:text-blue-600 p-2 h-8 w-8"
             title="Edit pages"
           >
             <Edit className="h-4 w-4" />
