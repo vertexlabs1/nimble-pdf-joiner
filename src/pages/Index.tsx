@@ -18,48 +18,131 @@ const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [enhancedFiles, setEnhancedFiles] = useState<(PDFFileWithPages | null)[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [processingFiles, setProcessingFiles] = useState<boolean[]>([]);
 
   // Process files to extract page information
   useEffect(() => {
+    console.log('=== FILES CHANGED ===');
+    console.log('New files array:', files.map(f => f.name));
+    console.log('Files length:', files.length);
+    
     const processFiles = async () => {
-      const processed = await Promise.all(
-        files.map(async (file) => {
-          try {
-            return await processFileWithPages(file);
-          } catch (error) {
-            console.error('Error processing file:', file.name, error);
-            return null;
+      if (files.length === 0) {
+        console.log('No files to process, clearing enhanced files');
+        setEnhancedFiles([]);
+        setProcessingFiles([]);
+        return;
+      }
+
+      console.log('Starting to process files...');
+      setProcessingFiles(new Array(files.length).fill(true));
+      
+      try {
+        const processed = await Promise.allSettled(
+          files.map(async (file, index) => {
+            console.log(`Processing file ${index}: ${file.name}`);
+            try {
+              const result = await processFileWithPages(file);
+              console.log(`Successfully processed ${file.name}:`, {
+                pageCount: result.pageCount,
+                pagesLength: result.pages.length,
+                isModified: result.isModified
+              });
+              return result;
+            } catch (error) {
+              console.error(`Error processing file ${file.name}:`, error);
+              // Return a basic file info even if processing fails
+              return {
+                originalFile: file,
+                pageCount: 1,
+                pages: [],
+                isModified: false,
+              } as PDFFileWithPages;
+            }
+          })
+        );
+
+        const results = processed.map((result, index) => {
+          if (result.status === 'fulfilled') {
+            console.log(`File ${index} processed successfully:`, result.value);
+            return result.value;
+          } else {
+            console.error(`File ${index} failed to process:`, result.reason);
+            // Return basic info for failed files
+            return {
+              originalFile: files[index],
+              pageCount: 1,
+              pages: [],
+              isModified: false,
+            } as PDFFileWithPages;
           }
-        })
-      );
-      setEnhancedFiles(processed);
+        });
+
+        console.log('=== SETTING ENHANCED FILES ===');
+        console.log('Results array:', results);
+        setEnhancedFiles(results);
+        setProcessingFiles(new Array(files.length).fill(false));
+        
+      } catch (error) {
+        console.error('Error in processFiles:', error);
+        // Ensure we always have some result
+        const fallbackResults = files.map(file => ({
+          originalFile: file,
+          pageCount: 1,
+          pages: [],
+          isModified: false,
+        }));
+        setEnhancedFiles(fallbackResults);
+        setProcessingFiles(new Array(files.length).fill(false));
+      }
     };
 
-    if (files.length > 0) {
-      processFiles();
-    } else {
-      setEnhancedFiles([]);
-    }
+    processFiles();
   }, [files]);
 
+  // Debug enhancedFiles changes
+  useEffect(() => {
+    console.log('=== ENHANCED FILES CHANGED ===');
+    console.log('Enhanced files:', enhancedFiles);
+    console.log('Enhanced files length:', enhancedFiles.length);
+    enhancedFiles.forEach((file, index) => {
+      if (file) {
+        console.log(`Enhanced file ${index}:`, {
+          name: file.originalFile.name,
+          pageCount: file.pageCount,
+          pagesLength: file.pages.length,
+          isModified: file.isModified
+        });
+      } else {
+        console.log(`Enhanced file ${index}: NULL`);
+      }
+    });
+  }, [enhancedFiles]);
+
   const handleFilesAdded = (newFiles: File[]) => {
+    console.log('Adding new files:', newFiles.map(f => f.name));
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
   };
 
   const handleReorder = (newFiles: File[]) => {
+    console.log('Reordering files:', newFiles.map(f => f.name));
     setFiles(newFiles);
   };
 
   const handleRemove = (index: number) => {
+    console.log('Removing file at index:', index);
     setFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
   };
 
   const handleClear = () => {
+    console.log('Clearing all files');
     setFiles([]);
     setEnhancedFiles([]);
+    setProcessingFiles([]);
   };
 
   const handleFileUpdate = (index: number, updatedFile: PDFFileWithPages) => {
+    console.log('Updating file at index:', index, 'with:', updatedFile);
     setEnhancedFiles(prev => {
       const newEnhanced = [...prev];
       newEnhanced[index] = updatedFile;
@@ -127,6 +210,11 @@ const Index = () => {
                       <Eye className="h-3 w-3 mr-1" />
                       Processed locally
                     </Badge>
+                    {processingFiles.some(Boolean) && (
+                      <Badge variant="outline" className="text-blue-700 border-blue-300">
+                        Processing...
+                      </Badge>
+                    )}
                   </div>
                   <button
                     onClick={handleClear}
