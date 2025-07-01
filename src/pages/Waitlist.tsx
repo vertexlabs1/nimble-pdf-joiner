@@ -16,7 +16,8 @@ import {
   Zap, 
   History,
   Sparkles,
-  Mail
+  Mail,
+  Cloud
 } from 'lucide-react';
 
 const Waitlist = () => {
@@ -61,17 +62,22 @@ const Waitlist = () => {
       icon: History,
       title: 'Save & access file history',
       description: 'Keep track of all your merged documents with cloud storage'
+    },
+    {
+      icon: Cloud,
+      title: 'Advanced OCR & AI',
+      description: 'Extract text from scanned documents with AI-powered recognition'
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       <div className="container mx-auto px-4 py-8">
         {/* Header with Back Button */}
         <div className="flex items-center gap-4 mb-8">
           <Link 
             to="/" 
-            className="flex items-center gap-2 text-green-600 hover:text-green-700 transition-colors"
+            className="flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Merger
@@ -87,11 +93,11 @@ const Waitlist = () => {
               </div>
             </div>
             
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent mb-4">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent mb-4">
               Pro Features Are Coming 🔥
             </h1>
             
-            <p className="text-lg text-gray-700 max-w-2xl mx-auto mb-2">
+            <p className="text-lg text-gray-300 max-w-2xl mx-auto mb-2">
               Join the waitlist to get early access and bonus perks when we launch our premium tools.
             </p>
             
@@ -107,14 +113,14 @@ const Waitlist = () => {
           <div className="flex justify-center mb-12">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
               {features.map((feature, index) => (
-                <Card key={index} className="p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-150 group cursor-pointer">
+                <Card key={index} className="p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-150 group cursor-pointer bg-slate-800/50 border-slate-700 backdrop-blur-sm">
                   <div className="flex items-start gap-4">
-                    <div className="bg-gradient-to-r from-green-100 to-blue-100 p-3 rounded-lg group-hover:shadow-md transition-shadow">
-                      <feature.icon className="h-6 w-6 text-green-600" />
+                    <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 p-3 rounded-lg group-hover:shadow-md transition-shadow border border-green-500/30">
+                      <feature.icon className="h-6 w-6 text-green-400" />
                     </div>
                     <div>
-                      <h3 className="font-semibold mb-2 text-gray-900 group-hover:text-green-700 transition-colors">{feature.title}</h3>
-                      <p className="text-sm text-gray-600">{feature.description}</p>
+                      <h3 className="font-semibold mb-2 text-gray-100 group-hover:text-green-400 transition-colors">{feature.title}</h3>
+                      <p className="text-sm text-gray-400">{feature.description}</p>
                     </div>
                   </div>
                 </Card>
@@ -123,15 +129,15 @@ const Waitlist = () => {
           </div>
 
           {/* Email Signup Section */}
-          <Card className="max-w-md mx-auto p-8 bg-gradient-to-r from-green-50 to-blue-50 border-green-200 shadow-lg">
+          <Card className="max-w-md mx-auto p-8 bg-slate-800/60 border-slate-700 shadow-2xl backdrop-blur-sm">
             {!isSubmitted ? (
               <>
                 <div className="text-center mb-6">
-                  <Mail className="h-8 w-8 text-green-600 mx-auto mb-3" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <Mail className="h-8 w-8 text-green-400 mx-auto mb-3" />
+                  <h3 className="text-xl font-semibold text-gray-100 mb-2">
                     Be the first to know
                   </h3>
-                  <p className="text-gray-600 text-sm">
+                  <p className="text-gray-400 text-sm">
                     Get notified when pro features launch
                   </p>
                 </div>
@@ -143,7 +149,7 @@ const Waitlist = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md"
+                      className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md text-gray-100 placeholder-gray-400"
                       required
                     />
                   </div>
@@ -153,7 +159,7 @@ const Waitlist = () => {
                       value={featureRequest}
                       onChange={(e) => setFeatureRequest(e.target.value)}
                       placeholder="Request a feature (optional)"
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md resize-none"
+                      className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md resize-none text-gray-100 placeholder-gray-400"
                       rows={3}
                     />
                   </div>
@@ -167,30 +173,30 @@ const Waitlist = () => {
                   </Button>
                 </form>
                 
-                <div className="text-center mt-6 pt-4 border-t border-gray-200">
+                <div className="text-center mt-6 pt-4 border-t border-slate-600">
                   <p className="text-xs text-gray-500 mb-2">
                     No spam, just product updates. Unsubscribe anytime.
                   </p>
-                  <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
-                    <span>Built by <span className="font-medium text-gray-700">VertexLabs</span></span>
+                  <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                    <span>Built by <span className="font-medium text-gray-300">VertexLabs</span></span>
                     <span>•</span>
-                    <span className="text-green-600 font-medium">100% Private by Design</span>
+                    <span className="text-green-400 font-medium">100% Private by Design</span>
                   </div>
                 </div>
               </>
             ) : (
               <div className="text-center">
-                <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4 animate-pulse-glow">
-                  <Check className="h-6 w-6 text-green-600" />
+                <div className="bg-green-500/20 p-3 rounded-full w-fit mx-auto mb-4 animate-pulse-glow border border-green-500/30">
+                  <Check className="h-6 w-6 text-green-400" />
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <h3 className="text-xl font-semibold text-gray-100 mb-2">
                   You're on the list! 🎉
                 </h3>
-                <p className="text-gray-600 text-sm mb-4">
+                <p className="text-gray-400 text-sm mb-4">
                   We'll notify you as soon as pro features are available.
                 </p>
                 <Link to="/">
-                  <Button variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 hover:scale-105 transition-all duration-200">
+                  <Button variant="outline" className="border-green-500/30 text-green-400 hover:bg-green-500/10 hover:scale-105 transition-all duration-200 bg-transparent">
                     Back to PDF Merger
                   </Button>
                 </Link>
@@ -200,9 +206,9 @@ const Waitlist = () => {
 
           {/* Footer */}
           <div className="mt-16 pt-8">
-            <Separator className="mb-6" />
-            <div className="text-center text-sm text-gray-600">
-              <p>© 2025 MergePDFSecurely.com - Built by <span className="font-medium text-gray-700">VertexLabs</span></p>
+            <Separator className="mb-6 bg-slate-700" />
+            <div className="text-center text-sm text-gray-500">
+              <p>© 2025 MergePDFSecurely.com - Built by <span className="font-medium text-gray-400">VertexLabs</span></p>
             </div>
           </div>
         </div>

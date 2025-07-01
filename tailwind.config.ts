@@ -126,7 +126,7 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-glow': 'pulse-glow 25s ease-in-out infinite',
+				'pulse-glow': 'pulse-glow 50s ease-in-out infinite',
 				'sparkle': 'sparkle 2s ease-in-out',
 				'glow-ring': 'glow-ring 3s ease-in-out infinite'
 			}
