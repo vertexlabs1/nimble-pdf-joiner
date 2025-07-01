@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PDFUploader } from '@/components/PDFUploader';
 import { FileList } from '@/components/FileList';
@@ -8,9 +7,10 @@ import { SecurityInfoDialog } from '@/components/SecurityInfoDialog';
 import { HowItWorks } from '@/components/HowItWorks';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
-import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
+import { FileText, Shield, Zap, Lock, Eye, Download, Sparkles } from 'lucide-react';
 import { PDFFileWithPages } from '@/types/pdf';
 import { getBasicFileInfo } from '@/utils/pdfPageUtils';
 
@@ -124,6 +124,42 @@ const Index = () => {
         {/* Security Callout */}
         <div className="max-w-3xl mx-auto mb-8">
           <SecurityCallout />
+        </div>
+
+        {/* Pro Features Section */}
+        <div className="max-w-4xl mx-auto mb-8">
+          <Card className="p-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Experience</h2>
+              <p className="text-gray-600">Free merging or unlock powerful pro features</p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
+              <Button
+                variant="outline"
+                size="lg"
+                className="flex-1 w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 font-medium"
+              >
+                Merge Only
+              </Button>
+              
+              <Link to="/waitlist" className="flex-1 w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  ✨ Go Pro
+                </Button>
+              </Link>
+            </div>
+            
+            <div className="text-center mt-4">
+              <p className="text-xs text-gray-500">
+                Pro features: PDF to CSV, Redact text, Batch processing, API access & more
+              </p>
+            </div>
+          </Card>
         </div>
 
         {/* Main Content */}
