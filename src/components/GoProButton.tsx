@@ -14,12 +14,23 @@ export const GoProButton = () => {
   const [showSparkle, setShowSparkle] = useState(false);
 
   useEffect(() => {
-    // Trigger sparkle animation on component mount
-    const timer = setTimeout(() => {
+    // Initial sparkle animation
+    const initialTimer = setTimeout(() => {
       setShowSparkle(true);
     }, 500);
 
-    return () => clearTimeout(timer);
+    // Periodic sparkle animation every 8 seconds
+    const intervalTimer = setInterval(() => {
+      setShowSparkle(false);
+      setTimeout(() => {
+        setShowSparkle(true);
+      }, 100);
+    }, 8000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
   }, []);
 
   return (
@@ -35,7 +46,7 @@ export const GoProButton = () => {
               }}
             >
               <Sparkles 
-                className={`h-4 w-4 mr-2 ${showSparkle ? 'animate-sparkle' : ''}`} 
+                className={`h-4 w-4 mr-2 transition-all duration-300 ${showSparkle ? 'animate-sparkle' : ''}`} 
               />
               <span className="relative z-10">✨ Go Pro</span>
               

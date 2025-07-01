@@ -102,16 +102,16 @@ export default {
 						transform: 'rotate(0deg) scale(1)'
 					},
 					'25%': {
-						opacity: '0.8',
-						transform: 'rotate(90deg) scale(1.1)'
+						opacity: '0.7',
+						transform: 'rotate(90deg) scale(1.2)'
 					},
 					'50%': {
 						opacity: '1',
 						transform: 'rotate(180deg) scale(1)'
 					},
 					'75%': {
-						opacity: '0.8',
-						transform: 'rotate(270deg) scale(1.1)'
+						opacity: '0.7',
+						transform: 'rotate(270deg) scale(1.2)'
 					}
 				},
 				'glow-ring': {
@@ -126,8 +126,8 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-glow': 'pulse-glow 50s ease-in-out infinite',
-				'sparkle': 'sparkle 2s ease-in-out',
+				'pulse-glow': 'pulse-glow 30s ease-in-out infinite',
+				'sparkle': 'sparkle 1.5s ease-in-out',
 				'glow-ring': 'glow-ring 3s ease-in-out infinite'
 			}
 		}
