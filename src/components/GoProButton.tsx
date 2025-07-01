@@ -1,5 +1,4 @@
 
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sparkles } from 'lucide-react';
@@ -11,28 +10,6 @@ import {
 } from '@/components/ui/tooltip';
 
 export const GoProButton = () => {
-  const [showSparkle, setShowSparkle] = useState(false);
-
-  useEffect(() => {
-    // Initial sparkle animation
-    const initialTimer = setTimeout(() => {
-      setShowSparkle(true);
-    }, 1000);
-
-    // Less frequent sparkle animation every 8 seconds
-    const intervalTimer = setInterval(() => {
-      setShowSparkle(false);
-      setTimeout(() => {
-        setShowSparkle(true);
-      }, 200);
-    }, 8000);
-
-    return () => {
-      clearTimeout(initialTimer);
-      clearInterval(intervalTimer);
-    };
-  }, []);
-
   return (
     <TooltipProvider>
       <Tooltip>
@@ -44,18 +21,13 @@ export const GoProButton = () => {
           >
             <Button
               size="lg"
-              className="w-full bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-600 hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-700 text-white font-black text-lg shadow-lg hover:shadow-2xl hover:scale-110 transition-all duration-300 animate-button-halo border-0 relative overflow-hidden group"
+              className="w-full bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-600 hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-700 text-white font-black text-lg shadow-lg hover:shadow-2xl hover:scale-110 transition-all duration-300 border-0 relative overflow-hidden group"
             >
-              <Sparkles 
-                className={`h-5 w-5 mr-2 transition-all duration-700 ${showSparkle ? 'animate-premium-sparkle' : ''}`} 
-              />
+              <Sparkles className="h-5 w-5 mr-2" />
               <span className="relative z-10 font-black">✨ Go Pro</span>
               
               {/* Enhanced glow effect overlay */}
               <div className="absolute inset-0 bg-gradient-to-r from-yellow-400/30 to-orange-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              
-              {/* Shimmer effect */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity duration-300" />
             </Button>
           </Link>
         </TooltipTrigger>
