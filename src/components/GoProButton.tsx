@@ -30,6 +30,9 @@ export const GoProButton = () => {
             <Button
               size="lg"
               className="w-full bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-600 hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-700 text-white font-bold shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-200 animate-pulse-glow border-0 relative overflow-hidden group"
+              style={{
+                animation: 'pulse-glow 50s ease-in-out infinite'
+              }}
             >
               <Sparkles 
                 className={`h-4 w-4 mr-2 ${showSparkle ? 'animate-sparkle' : ''}`} 
