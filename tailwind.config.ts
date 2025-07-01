@@ -114,21 +114,82 @@ export default {
 						transform: 'rotate(270deg) scale(1.2)'
 					}
 				},
-				'glow-ring': {
+				'button-halo': {
 					'0%, 100%': {
-						boxShadow: '0 0 20px rgba(234, 179, 8, 0.3)'
+						boxShadow: '0 0 20px rgba(234, 179, 8, 0.4), 0 0 40px rgba(234, 179, 8, 0.1)'
 					},
 					'50%': {
-						boxShadow: '0 0 30px rgba(234, 179, 8, 0.5), 0 0 40px rgba(234, 179, 8, 0.2)'
+						boxShadow: '0 0 30px rgba(234, 179, 8, 0.6), 0 0 60px rgba(234, 179, 8, 0.2)'
+					}
+				},
+				'shimmer': {
+					'0%': {
+						backgroundPosition: '-200% 0'
+					},
+					'100%': {
+						backgroundPosition: '200% 0'
+					}
+				},
+				'bounce-attention': {
+					'0%, 100%': {
+						transform: 'translateY(0)'
+					},
+					'50%': {
+						transform: 'translateY(-4px)'
+					}
+				},
+				'premium-sparkle': {
+					'0%, 100%': {
+						opacity: '0.8',
+						transform: 'rotate(0deg) scale(1)',
+						filter: 'brightness(1)'
+					},
+					'25%': {
+						opacity: '1',
+						transform: 'rotate(90deg) scale(1.3)',
+						filter: 'brightness(1.2)'
+					},
+					'50%': {
+						opacity: '0.9',
+						transform: 'rotate(180deg) scale(1.1)',
+						filter: 'brightness(1.1)'
+					},
+					'75%': {
+						opacity: '1',
+						transform: 'rotate(270deg) scale(1.3)',
+						filter: 'brightness(1.2)'
+					}
+				},
+				'icon-glow': {
+					'0%, 100%': {
+						filter: 'drop-shadow(0 0 8px rgba(234, 179, 8, 0.3))'
+					},
+					'50%': {
+						filter: 'drop-shadow(0 0 16px rgba(234, 179, 8, 0.6))'
+					}
+				},
+				'page-enter': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(20px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0)'
 					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-glow': 'pulse-glow 30s ease-in-out infinite',
+				'pulse-glow': 'pulse-glow 3s ease-in-out infinite',
 				'sparkle': 'sparkle 1.5s ease-in-out',
-				'glow-ring': 'glow-ring 3s ease-in-out infinite'
+				'premium-sparkle': 'premium-sparkle 2s ease-in-out infinite',
+				'button-halo': 'button-halo 2s ease-in-out infinite',
+				'shimmer': 'shimmer 2s linear infinite',
+				'bounce-attention': 'bounce-attention 2s ease-in-out infinite',
+				'icon-glow': 'icon-glow 2s ease-in-out infinite',
+				'page-enter': 'page-enter 0.6s ease-out'
 			}
 		}
 	},

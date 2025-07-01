@@ -17,7 +17,8 @@ import {
   History,
   Sparkles,
   Mail,
-  Cloud
+  Cloud,
+  Loader2
 } from 'lucide-react';
 
 const Waitlist = () => {
@@ -71,13 +72,13 @@ const Waitlist = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 animate-page-enter">
       <div className="container mx-auto px-4 py-8">
         {/* Header with Back Button */}
         <div className="flex items-center gap-4 mb-8">
           <Link 
             to="/" 
-            className="flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors"
+            className="flex items-center gap-2 text-green-400 hover:text-green-300 transition-colors hover:scale-105 transform duration-200"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Merger
@@ -85,15 +86,15 @@ const Waitlist = () => {
         </div>
 
         <div className="max-w-4xl mx-auto">
-          {/* Hero Section */}
+          {/* Enhanced Hero Section */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center mb-6">
-              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-4 rounded-full animate-glow-ring">
-                <Sparkles className="h-8 w-8 text-white animate-sparkle" />
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-4 rounded-full animate-button-halo">
+                <Sparkles className="h-8 w-8 text-white animate-icon-glow" />
               </div>
             </div>
             
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent mb-4">
+            <h1 className="text-5xl font-black bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent mb-4 animate-pulse-glow">
               Pro Features Are Coming 🔥
             </h1>
             
@@ -102,7 +103,15 @@ const Waitlist = () => {
             </p>
             
             <div className="flex justify-center mb-4">
-              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 animate-pulse-glow">
+              <Badge 
+                variant="secondary" 
+                className="bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 hover:from-yellow-200 hover:to-orange-200 animate-bounce-attention relative overflow-hidden"
+                style={{
+                  backgroundImage: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.5) 50%, transparent 70%)',
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmer 3s ease-in-out infinite, bounce-attention 4s ease-in-out infinite'
+                }}
+              >
                 <Sparkles className="h-3 w-3 mr-1" />
                 Early Bird Discount Available
               </Badge>
@@ -113,14 +122,17 @@ const Waitlist = () => {
           <div className="flex justify-center mb-12">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
               {features.map((feature, index) => (
-                <Card key={index} className="p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-150 group cursor-pointer bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+                <Card 
+                  key={index} 
+                  className="p-6 hover:shadow-xl hover:scale-[1.03] transition-all duration-300 group cursor-pointer bg-slate-800/50 border-slate-600 backdrop-blur-sm hover:border-green-500/50"
+                >
                   <div className="flex items-start gap-4">
-                    <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 p-3 rounded-lg group-hover:shadow-md transition-shadow border border-green-500/30">
-                      <feature.icon className="h-6 w-6 text-green-400" />
+                    <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 p-3 rounded-lg group-hover:shadow-lg group-hover:from-green-500/30 group-hover:to-blue-500/30 transition-all duration-300 border border-green-500/30">
+                      <feature.icon className="h-6 w-6 text-green-400 group-hover:scale-110 transition-transform duration-300" />
                     </div>
                     <div>
-                      <h3 className="font-semibold mb-2 text-gray-100 group-hover:text-green-400 transition-colors">{feature.title}</h3>
-                      <p className="text-sm text-gray-400">{feature.description}</p>
+                      <h3 className="font-semibold mb-2 text-gray-100 group-hover:text-green-400 transition-colors duration-300">{feature.title}</h3>
+                      <p className="text-sm text-gray-400 group-hover:text-gray-300 transition-colors duration-300">{feature.description}</p>
                     </div>
                   </div>
                 </Card>
@@ -128,13 +140,13 @@ const Waitlist = () => {
             </div>
           </div>
 
-          {/* Email Signup Section */}
-          <Card className="max-w-md mx-auto p-8 bg-slate-800/60 border-slate-700 shadow-2xl backdrop-blur-sm">
+          {/* Enhanced Email Signup Section */}
+          <Card className="max-w-md mx-auto p-8 bg-slate-800/60 border-slate-600 shadow-2xl backdrop-blur-sm hover:shadow-3xl transition-shadow duration-300">
             {!isSubmitted ? (
               <>
                 <div className="text-center mb-6">
-                  <Mail className="h-8 w-8 text-green-400 mx-auto mb-3" />
-                  <h3 className="text-xl font-semibold text-gray-100 mb-2">
+                  <Mail className="h-8 w-8 text-green-400 mx-auto mb-3 animate-pulse" />
+                  <h3 className="text-xl font-bold text-gray-100 mb-2">
                     Be the first to know
                   </h3>
                   <p className="text-gray-400 text-sm">
@@ -149,7 +161,7 @@ const Waitlist = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md text-gray-100 placeholder-gray-400"
+                      className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:border-slate-500 text-gray-100 placeholder-gray-400"
                       required
                     />
                   </div>
@@ -159,7 +171,7 @@ const Waitlist = () => {
                       value={featureRequest}
                       onChange={(e) => setFeatureRequest(e.target.value)}
                       placeholder="Request a feature (optional)"
-                      className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md resize-none text-gray-100 placeholder-gray-400"
+                      className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:border-slate-500 resize-none text-gray-100 placeholder-gray-400"
                       rows={3}
                     />
                   </div>
@@ -167,9 +179,19 @@ const Waitlist = () => {
                   <Button
                     type="submit"
                     disabled={isLoading || !email}
-                    className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
+                    className="w-full bg-gradient-to-r from-green-600 via-green-500 to-blue-600 hover:from-green-700 hover:via-green-600 hover:to-blue-700 text-white font-bold py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 relative overflow-hidden group"
                   >
-                    {isLoading ? 'Joining...' : 'Join the Waitlist'}
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Joining...
+                      </>
+                    ) : (
+                      'Join the Waitlist'
+                    )}
+                    
+                    {/* Shimmer effect on hover */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 group-hover:animate-shimmer transition-opacity duration-300" />
                   </Button>
                 </form>
                 
@@ -196,7 +218,7 @@ const Waitlist = () => {
                   We'll notify you as soon as pro features are available.
                 </p>
                 <Link to="/">
-                  <Button variant="outline" className="border-green-500/30 text-green-400 hover:bg-green-500/10 hover:scale-105 transition-all duration-200 bg-transparent">
+                  <Button variant="outline" className="border-green-500/30 text-green-400 hover:bg-green-500/10 hover:scale-105 transition-all duration-300 bg-transparent">
                     Back to PDF Merger
                   </Button>
                 </Link>

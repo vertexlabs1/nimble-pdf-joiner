@@ -92,7 +92,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 animate-page-enter">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <header className="text-center mb-8">
@@ -128,7 +128,7 @@ const Index = () => {
           <SecurityCallout />
         </div>
 
-        {/* Pro Features Section */}
+        {/* Enhanced Features Section */}
         <div className="max-w-4xl mx-auto mb-8">
           <Card className="p-6 bg-white/80 border border-gray-200 backdrop-blur-sm shadow-lg">
             <div className="text-center mb-6">
@@ -137,13 +137,15 @@ const Index = () => {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-              <Button
-                variant="outline"
-                size="lg"
-                className="flex-1 w-full sm:w-auto border-gray-300 text-gray-700 hover:bg-gray-50 font-medium bg-white"
-              >
-                Merge Only
-              </Button>
+              {/* Current Status Indicator */}
+              <div className="flex-1 w-full sm:w-auto">
+                <div className="flex items-center justify-center px-6 py-3 bg-green-50 border-2 border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-semibold">You're using: <strong>Free PDF Merger</strong></span>
+                  </div>
+                </div>
+              </div>
               
               <GoProButton />
             </div>
