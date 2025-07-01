@@ -37,7 +37,11 @@ export const GoProButton = () => {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Link to="/waitlist" className="flex-1 w-full sm:w-auto">
+          <Link 
+            to="/waitlist" 
+            state={{ from: 'pro' }}
+            className="flex-1 w-full sm:w-auto"
+          >
             <Button
               size="lg"
               className="w-full bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-600 hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-700 text-white font-black text-lg shadow-lg hover:shadow-2xl hover:scale-110 transition-all duration-300 animate-button-halo border-0 relative overflow-hidden group"

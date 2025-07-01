@@ -1,11 +1,12 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useWaitlist } from '@/hooks/useWaitlist';
+import { useToast } from '@/hooks/use-toast';
 import { 
   FileText, 
   ArrowLeft, 
@@ -18,24 +19,86 @@ import {
   Sparkles,
   Mail,
   Cloud,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 
 const Waitlist = () => {
   const [email, setEmail] = useState('');
   const [featureRequest, setFeatureRequest] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const location = useLocation();
+  const { submitToWaitlist, checkPreviousSubmission, isLoading, error } = useWaitlist();
+  const { toast } = useToast();
+
+  // Detect if user came from Go Pro button
+  const joinedFrom = location.state?.from === 'pro' ? 'pro_btn' : 'home';
+
+  useEffect(() => {
+    // Check if user has already joined
+    const { hasJoined, email: savedEmail } = checkPreviousSubmission();
+    if (hasJoined) {
+      setIsSubmitted(true);
+      setEmail(savedEmail || '');
+    }
+  }, []);
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !email.includes('@')) return;
     
-    setIsLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsSubmitted(true);
-    setIsLoading(false);
+    const trimmedEmail = email.trim();
+    
+    if (!trimmedEmail) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!validateEmail(trimmedEmail)) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (featureRequest.length > 300) {
+      toast({
+        title: "Feature request too long",
+        description: "Please keep your feature request under 300 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await submitToWaitlist({
+        email: trimmedEmail,
+        feature_request: featureRequest || undefined,
+        joined_from: joinedFrom
+      });
+      
+      setIsSubmitted(true);
+      toast({
+        title: "Success! 🎉",
+        description: "You're now on the waitlist. We'll notify you when pro features launch!",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const features = [
@@ -163,6 +226,7 @@ const Waitlist = () => {
                       placeholder="you@example.com"
                       className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:border-slate-500 text-gray-100 placeholder-gray-400"
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   
@@ -173,12 +237,24 @@ const Waitlist = () => {
                       placeholder="Request a feature (optional)"
                       className="w-full px-4 py-3 border-2 border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-slate-700/80 backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:border-slate-500 resize-none text-gray-100 placeholder-gray-400"
                       rows={3}
+                      maxLength={300}
+                      disabled={isLoading}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {featureRequest.length}/300 characters
+                    </p>
                   </div>
+                  
+                  {error && (
+                    <div className="flex items-center gap-2 text-red-400 text-sm">
+                      <AlertCircle className="h-4 w-4" />
+                      {error}
+                    </div>
+                  )}
                   
                   <Button
                     type="submit"
-                    disabled={isLoading || !email}
+                    disabled={isLoading || !email.trim()}
                     className="w-full bg-gradient-to-r from-green-600 via-green-500 to-blue-600 hover:from-green-700 hover:via-green-600 hover:to-blue-700 text-white font-bold py-3 shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:hover:scale-100 relative overflow-hidden group"
                   >
                     {isLoading ? (
