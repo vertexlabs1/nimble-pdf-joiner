@@ -45,7 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .eq('email', session.user.email)
                 .single();
               
-              setIsAdmin(!error && data);
+              setIsAdmin(!error && !!data);
             } catch (error) {
               console.error('Error checking admin status:', error);
               setIsAdmin(false);
