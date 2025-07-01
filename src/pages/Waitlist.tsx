@@ -15,7 +15,8 @@ import {
   Zap, 
   History,
   Sparkles,
-  Mail
+  Mail,
+  Users
 } from 'lucide-react';
 
 const Waitlist = () => {
@@ -80,8 +81,8 @@ const Waitlist = () => {
           {/* Hero Section */}
           <div className="text-center mb-12">
             <div className="flex items-center justify-center mb-6">
-              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-4 rounded-full">
-                <Sparkles className="h-8 w-8 text-white" />
+              <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-4 rounded-full animate-glow-ring">
+                <Sparkles className="h-8 w-8 text-white animate-sparkle" />
               </div>
             </div>
             
@@ -93,22 +94,28 @@ const Waitlist = () => {
               Join the waitlist to get early access and bonus perks when we launch our premium tools.
             </p>
             
-            <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-              <Sparkles className="h-3 w-3 mr-1" />
-              Early Bird Discount Available
-            </Badge>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+              <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 animate-pulse-glow">
+                <Sparkles className="h-3 w-3 mr-1" />
+                Early Bird Discount Available
+              </Badge>
+              <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
+                <Users className="h-3 w-3 mr-1" />
+                147 users already signed up
+              </Badge>
+            </div>
           </div>
 
           {/* Features Grid */}
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             {features.map((feature, index) => (
-              <Card key={index} className="p-6 hover:shadow-lg transition-shadow">
+              <Card key={index} className="p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-150 group cursor-pointer">
                 <div className="flex items-start gap-4">
-                  <div className="bg-gradient-to-r from-green-100 to-blue-100 p-3 rounded-lg">
+                  <div className="bg-gradient-to-r from-green-100 to-blue-100 p-3 rounded-lg group-hover:shadow-md transition-shadow">
                     <feature.icon className="h-6 w-6 text-green-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-2 text-gray-900">{feature.title}</h3>
+                    <h3 className="font-semibold mb-2 text-gray-900 group-hover:text-green-700 transition-colors">{feature.title}</h3>
                     <p className="text-sm text-gray-600">{feature.description}</p>
                   </div>
                 </div>
@@ -117,7 +124,7 @@ const Waitlist = () => {
           </div>
 
           {/* Email Signup Section */}
-          <Card className="max-w-md mx-auto p-8 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+          <Card className="max-w-md mx-auto p-8 bg-gradient-to-r from-green-50 to-blue-50 border-green-200 shadow-lg">
             {!isSubmitted ? (
               <>
                 <div className="text-center mb-6">
@@ -137,7 +144,7 @@ const Waitlist = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@example.com"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md"
                       required
                     />
                   </div>
@@ -145,19 +152,26 @@ const Waitlist = () => {
                   <Button
                     type="submit"
                     disabled={isLoading || !email}
-                    className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold py-3"
+                    className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold py-3 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
                   >
                     {isLoading ? 'Joining...' : 'Join the Waitlist'}
                   </Button>
                 </form>
                 
-                <p className="text-xs text-gray-500 text-center mt-4">
-                  No spam, just product updates. Unsubscribe anytime.
-                </p>
+                <div className="text-center mt-6 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-500 mb-2">
+                    No spam, just product updates. Unsubscribe anytime.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 text-xs text-gray-600">
+                    <span>Built by <span className="font-medium text-gray-700">VertexLabs</span></span>
+                    <span>•</span>
+                    <span className="text-green-600 font-medium">100% Private by Design</span>
+                  </div>
+                </div>
               </>
             ) : (
               <div className="text-center">
-                <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4">
+                <div className="bg-green-100 p-3 rounded-full w-fit mx-auto mb-4 animate-pulse-glow">
                   <Check className="h-6 w-6 text-green-600" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -167,7 +181,7 @@ const Waitlist = () => {
                   We'll notify you as soon as pro features are available.
                 </p>
                 <Link to="/">
-                  <Button variant="outline" className="border-green-300 text-green-700 hover:bg-green-50">
+                  <Button variant="outline" className="border-green-300 text-green-700 hover:bg-green-50 hover:scale-105 transition-all duration-200">
                     Back to PDF Merger
                   </Button>
                 </Link>

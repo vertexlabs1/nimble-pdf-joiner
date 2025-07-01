@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -84,11 +85,50 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'pulse-glow': {
+					'0%, 100%': {
+						opacity: '1',
+						transform: 'scale(1)'
+					},
+					'50%': {
+						opacity: '0.8',
+						transform: 'scale(1.05)'
+					}
+				},
+				'sparkle': {
+					'0%, 100%': {
+						opacity: '1',
+						transform: 'rotate(0deg) scale(1)'
+					},
+					'25%': {
+						opacity: '0.8',
+						transform: 'rotate(90deg) scale(1.1)'
+					},
+					'50%': {
+						opacity: '1',
+						transform: 'rotate(180deg) scale(1)'
+					},
+					'75%': {
+						opacity: '0.8',
+						transform: 'rotate(270deg) scale(1.1)'
+					}
+				},
+				'glow-ring': {
+					'0%, 100%': {
+						boxShadow: '0 0 20px rgba(234, 179, 8, 0.3)'
+					},
+					'50%': {
+						boxShadow: '0 0 30px rgba(234, 179, 8, 0.5), 0 0 40px rgba(234, 179, 8, 0.2)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'pulse-glow': 'pulse-glow 10s ease-in-out infinite',
+				'sparkle': 'sparkle 2s ease-in-out',
+				'glow-ring': 'glow-ring 3s ease-in-out infinite'
 			}
 		}
 	},

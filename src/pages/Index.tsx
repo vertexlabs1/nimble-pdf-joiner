@@ -5,12 +5,13 @@ import { MergeButton } from '@/components/MergeButton';
 import { SecurityCallout } from '@/components/SecurityCallout';
 import { SecurityInfoDialog } from '@/components/SecurityInfoDialog';
 import { HowItWorks } from '@/components/HowItWorks';
+import { GoProButton } from '@/components/GoProButton';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
-import { FileText, Shield, Zap, Lock, Eye, Download, Sparkles } from 'lucide-react';
+import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
 import { PDFFileWithPages } from '@/types/pdf';
 import { getBasicFileInfo } from '@/utils/pdfPageUtils';
 
@@ -143,15 +144,7 @@ const Index = () => {
                 Merge Only
               </Button>
               
-              <Link to="/waitlist" className="flex-1 w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  ✨ Go Pro
-                </Button>
-              </Link>
+              <GoProButton />
             </div>
             
             <div className="text-center mt-4">
