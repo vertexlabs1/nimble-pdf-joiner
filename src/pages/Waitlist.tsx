@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { 
   FileText, 
@@ -15,12 +16,12 @@ import {
   Zap, 
   History,
   Sparkles,
-  Mail,
-  Users
+  Mail
 } from 'lucide-react';
 
 const Waitlist = () => {
   const [email, setEmail] = useState('');
+  const [featureRequest, setFeatureRequest] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -94,33 +95,31 @@ const Waitlist = () => {
               Join the waitlist to get early access and bonus perks when we launch our premium tools.
             </p>
             
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+            <div className="flex justify-center mb-4">
               <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 animate-pulse-glow">
                 <Sparkles className="h-3 w-3 mr-1" />
                 Early Bird Discount Available
               </Badge>
-              <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
-                <Users className="h-3 w-3 mr-1" />
-                147 users already signed up
-              </Badge>
             </div>
           </div>
 
-          {/* Features Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            {features.map((feature, index) => (
-              <Card key={index} className="p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-150 group cursor-pointer">
-                <div className="flex items-start gap-4">
-                  <div className="bg-gradient-to-r from-green-100 to-blue-100 p-3 rounded-lg group-hover:shadow-md transition-shadow">
-                    <feature.icon className="h-6 w-6 text-green-600" />
+          {/* Features Grid - Centered */}
+          <div className="flex justify-center mb-12">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl">
+              {features.map((feature, index) => (
+                <Card key={index} className="p-6 hover:shadow-lg hover:scale-[1.02] transition-all duration-150 group cursor-pointer">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-gradient-to-r from-green-100 to-blue-100 p-3 rounded-lg group-hover:shadow-md transition-shadow">
+                      <feature.icon className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2 text-gray-900 group-hover:text-green-700 transition-colors">{feature.title}</h3>
+                      <p className="text-sm text-gray-600">{feature.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold mb-2 text-gray-900 group-hover:text-green-700 transition-colors">{feature.title}</h3>
-                    <p className="text-sm text-gray-600">{feature.description}</p>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
+            </div>
           </div>
 
           {/* Email Signup Section */}
@@ -146,6 +145,16 @@ const Waitlist = () => {
                       placeholder="you@example.com"
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md"
                       required
+                    />
+                  </div>
+                  
+                  <div>
+                    <Textarea
+                      value={featureRequest}
+                      onChange={(e) => setFeatureRequest(e.target.value)}
+                      placeholder="Request a feature (optional)"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md resize-none"
+                      rows={3}
                     />
                   </div>
                   

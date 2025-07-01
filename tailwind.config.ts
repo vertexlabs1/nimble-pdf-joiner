@@ -92,8 +92,8 @@ export default {
 						transform: 'scale(1)'
 					},
 					'50%': {
-						opacity: '0.8',
-						transform: 'scale(1.05)'
+						opacity: '0.9',
+						transform: 'scale(1.02)'
 					}
 				},
 				'sparkle': {
@@ -126,7 +126,7 @@ export default {
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-glow': 'pulse-glow 10s ease-in-out infinite',
+				'pulse-glow': 'pulse-glow 25s ease-in-out infinite',
 				'sparkle': 'sparkle 2s ease-in-out',
 				'glow-ring': 'glow-ring 3s ease-in-out infinite'
 			}
