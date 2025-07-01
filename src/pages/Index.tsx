@@ -254,7 +254,26 @@ const Index = () => {
 
         {/* Footer */}
         <footer className="mt-16 pt-8">
-          <Separator className="mb-6 bg-gray-200" />
+          <Separator className="mb-8 bg-gray-200" />
+          
+          {/* Product Hunt Badge */}
+          <div className="text-center mb-8">
+            <a 
+              href="https://www.producthunt.com/products/merge-pdf-securely?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-merge&#0045;pdf&#0045;securely" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-block hover:scale-105 transition-transform duration-200"
+            >
+              <img 
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=985982&theme=light&t=1751390980188" 
+                alt="Merge PDF Securely - Merge PDFs in your browser — fast, private, and secure | Product Hunt" 
+                className="w-60 h-auto mx-auto rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                width="240" 
+                height="52" 
+              />
+            </a>
+          </div>
+          
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
             <div className="flex flex-col md:flex-row items-center gap-4">
               <p>© 2025 MergePDFSecurely.com</p>

@@ -17,15 +17,15 @@ export const GoProButton = () => {
     // Initial sparkle animation
     const initialTimer = setTimeout(() => {
       setShowSparkle(true);
-    }, 500);
+    }, 1000);
 
-    // More frequent sparkle animation every 4 seconds
+    // Less frequent sparkle animation every 8 seconds
     const intervalTimer = setInterval(() => {
       setShowSparkle(false);
       setTimeout(() => {
         setShowSparkle(true);
-      }, 100);
-    }, 4000);
+      }, 200);
+    }, 8000);
 
     return () => {
       clearTimeout(initialTimer);
@@ -47,7 +47,7 @@ export const GoProButton = () => {
               className="w-full bg-gradient-to-r from-yellow-500 via-orange-500 to-yellow-600 hover:from-yellow-600 hover:via-orange-600 hover:to-yellow-700 text-white font-black text-lg shadow-lg hover:shadow-2xl hover:scale-110 transition-all duration-300 animate-button-halo border-0 relative overflow-hidden group"
             >
               <Sparkles 
-                className={`h-5 w-5 mr-2 transition-all duration-500 ${showSparkle ? 'animate-premium-sparkle' : ''}`} 
+                className={`h-5 w-5 mr-2 transition-all duration-700 ${showSparkle ? 'animate-premium-sparkle' : ''}`} 
               />
               <span className="relative z-10 font-black">✨ Go Pro</span>
               
