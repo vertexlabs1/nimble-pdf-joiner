@@ -67,11 +67,31 @@ async function generateAndCacheThumbnail(filePath: string, fileId?: string): Pro
   try {
     console.log('Starting thumbnail generation for:', filePath);
     
+    // Try server-side thumbnail generation first
+    if (fileId) {
+      try {
+        const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
+          body: { filePath, fileId }
+        });
+
+        if (!error && data?.success && data?.thumbnailData) {
+          console.log('Server-side thumbnail generated successfully');
+          thumbnailCache.set(filePath, data.thumbnailData);
+          return data.thumbnailData;
+        }
+      } catch (serverError) {
+        console.warn('Server-side thumbnail generation failed, falling back to client-side:', serverError);
+      }
+    }
+
+    // Fallback to client-side generation
+    console.log('Attempting client-side thumbnail generation');
+    
     // Ensure PDF.js worker is initialized
     const workerReady = await initializePDFWorker();
     if (!workerReady) {
-      console.error('PDF.js worker initialization failed');
-      return null;
+      console.error('PDF.js worker initialization failed, using placeholder');
+      return generatePlaceholderThumbnail();
     }
     
     // Download PDF from Supabase storage
@@ -81,12 +101,12 @@ async function generateAndCacheThumbnail(filePath: string, fileId?: string): Pro
 
     if (error) {
       console.error('Error downloading PDF for thumbnail:', error, { filePath });
-      return null;
+      return generatePlaceholderThumbnail();
     }
 
     if (!data) {
       console.error('No data received for PDF download:', filePath);
-      return null;
+      return generatePlaceholderThumbnail();
     }
 
     console.log('PDF downloaded successfully, size:', data.size, 'bytes');
@@ -134,8 +154,22 @@ async function generateAndCacheThumbnail(filePath: string, fileId?: string): Pro
       filePath, 
       fileId
     });
-    return null;
+    return generatePlaceholderThumbnail();
   }
+}
+
+function generatePlaceholderThumbnail(): string {
+  const placeholderSvg = `
+    <svg width="200" height="260" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+      <rect width="200" height="260" fill="hsl(var(--card))" stroke="hsl(var(--border))" stroke-width="2"/>
+      <rect x="20" y="40" width="160" height="20" fill="hsl(var(--muted))" rx="2"/>
+      <rect x="20" y="80" width="120" height="20" fill="hsl(var(--muted))" rx="2"/>
+      <rect x="20" y="120" width="140" height="20" fill="hsl(var(--muted))" rx="2"/>
+      <rect x="20" y="160" width="100" height="20" fill="hsl(var(--muted))" rx="2"/>
+      <text x="100" y="220" text-anchor="middle" fill="hsl(var(--muted-foreground))" font-family="Arial" font-size="14">PDF</text>
+    </svg>
+  `;
+  return `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
 }
 
 async function saveThumbnailToStorage(thumbnail: string, filePath: string, fileId: string): Promise<void> {

@@ -144,14 +144,42 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     return customFilename + '.pdf';
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (mergeResult?.mergedPdfBytes) {
       const finalFilename = getDisplayFilename();
+      
+      // Save to storage first
+      try {
+        const { uploadMergedPDF } = await import('@/utils/fileStorage');
+        const result = await uploadMergedPDF(
+          mergeResult.mergedPdfBytes,
+          finalFilename,
+          files
+        );
+        
+        if (result.success) {
+          toast({
+            title: 'File saved & downloaded',
+            description: `Your merged PDF "${finalFilename}" has been saved to your files and is downloading`,
+          });
+        } else {
+          toast({
+            title: 'Download started',
+            description: `Download started, but couldn't save to files: ${result.error}`,
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        console.error('Error saving file:', error);
+        toast({
+          title: 'Download started',
+          description: `Download started, but couldn't save to files`,
+          variant: 'destructive',
+        });
+      }
+      
+      // Download the file
       downloadBlob(mergeResult.mergedPdfBytes, finalFilename);
-      toast({
-        title: 'Download started',
-        description: `Your merged PDF "${finalFilename}" is downloading`,
-      });
     }
   };
 
