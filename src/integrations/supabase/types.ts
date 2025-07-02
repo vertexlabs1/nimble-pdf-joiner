@@ -35,6 +35,7 @@ export type Database = {
           filename: string
           id: string
           original_filename: string
+          thumbnail_url: string | null
           updated_at: string
           user_id: string
         }
@@ -45,6 +46,7 @@ export type Database = {
           filename: string
           id?: string
           original_filename: string
+          thumbnail_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -55,6 +57,7 @@ export type Database = {
           filename?: string
           id?: string
           original_filename?: string
+          thumbnail_url?: string | null
           updated_at?: string
           user_id?: string
         }

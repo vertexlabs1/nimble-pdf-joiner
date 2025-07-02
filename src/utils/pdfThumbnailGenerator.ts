@@ -8,15 +8,69 @@ try {
   console.warn('Failed to set PDF.js worker source:', error);
 }
 
-// Cache for generated thumbnails
+// In-memory cache for generated thumbnails
 const thumbnailCache = new Map<string, string>();
 
-export async function generateStoredFileThumbnail(filePath: string): Promise<string | null> {
-  // Check cache first
+// Cache for ongoing generation requests to prevent duplicates
+const generationPromises = new Map<string, Promise<string | null>>();
+
+export async function generateStoredFileThumbnail(filePath: string, fileId?: string): Promise<string | null> {
+  // Check in-memory cache first
   if (thumbnailCache.has(filePath)) {
     return thumbnailCache.get(filePath)!;
   }
 
+  // Check if generation is already in progress
+  if (generationPromises.has(filePath)) {
+    return generationPromises.get(filePath)!;
+  }
+
+  // Check if thumbnail already exists in database/storage
+  if (fileId) {
+    const cachedUrl = await getCachedThumbnailUrl(fileId);
+    if (cachedUrl) {
+      thumbnailCache.set(filePath, cachedUrl);
+      return cachedUrl;
+    }
+  }
+
+  // Start generation process
+  const generationPromise = generateAndCacheThumbnail(filePath, fileId);
+  generationPromises.set(filePath, generationPromise);
+
+  try {
+    const result = await generationPromise;
+    return result;
+  } finally {
+    generationPromises.delete(filePath);
+  }
+}
+
+async function getCachedThumbnailUrl(fileId: string): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from('user_files')
+      .select('thumbnail_url')
+      .eq('id', fileId)
+      .single();
+
+    if (error || !data?.thumbnail_url) {
+      return null;
+    }
+
+    // Get public URL for the thumbnail
+    const { data: { publicUrl } } = supabase.storage
+      .from('thumbnails')
+      .getPublicUrl(data.thumbnail_url);
+
+    return publicUrl;
+  } catch (error) {
+    console.error('Error getting cached thumbnail URL:', error);
+    return null;
+  }
+}
+
+async function generateAndCacheThumbnail(filePath: string, fileId?: string): Promise<string | null> {
   try {
     // Download PDF from Supabase storage
     const { data, error } = await supabase.storage
@@ -37,11 +91,16 @@ export async function generateStoredFileThumbnail(filePath: string): Promise<str
     // Get first page
     const page = await pdfDocument.getPage(1);
     
-    // Generate thumbnail
-    const thumbnail = await renderPageThumbnail(page, 150, 200);
+    // Generate high-quality thumbnail
+    const thumbnail = await renderPageThumbnail(page, 200, 260);
     
-    // Cache the thumbnail
+    // Cache in memory
     thumbnailCache.set(filePath, thumbnail);
+
+    // Save to storage if fileId is provided
+    if (fileId) {
+      await saveThumbnailToStorage(thumbnail, filePath, fileId);
+    }
     
     return thumbnail;
   } catch (error) {
@@ -50,40 +109,46 @@ export async function generateStoredFileThumbnail(filePath: string): Promise<str
   }
 }
 
-export async function generateSmallThumbnail(filePath: string): Promise<string | null> {
+async function saveThumbnailToStorage(thumbnail: string, filePath: string, fileId: string): Promise<void> {
   try {
-    // Check if we have a cached full thumbnail first
-    if (thumbnailCache.has(filePath)) {
-      return thumbnailCache.get(filePath)!;
+    // Convert data URL to blob
+    const response = await fetch(thumbnail);
+    const blob = await response.blob();
+
+    // Generate thumbnail file path
+    const thumbnailPath = `${filePath.replace('.pdf', '_thumb.jpg')}`;
+
+    // Upload thumbnail to storage
+    const { error: uploadError } = await supabase.storage
+      .from('thumbnails')
+      .upload(thumbnailPath, blob, {
+        contentType: 'image/jpeg',
+        upsert: true
+      });
+
+    if (uploadError) {
+      console.error('Error uploading thumbnail:', uploadError);
+      return;
     }
 
-    // Download PDF from Supabase storage
-    const { data, error } = await supabase.storage
+    // Update database with thumbnail URL
+    const { error: updateError } = await supabase
       .from('user_files')
-      .download(filePath);
+      .update({ thumbnail_url: thumbnailPath })
+      .eq('id', fileId);
 
-    if (error) {
-      console.error('Error downloading PDF for small thumbnail:', error);
-      return null;
+    if (updateError) {
+      console.error('Error updating thumbnail URL in database:', updateError);
     }
-
-    // Convert blob to array buffer
-    const arrayBuffer = await data.arrayBuffer();
-    
-    // Load PDF document
-    const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    
-    // Get first page
-    const page = await pdfDocument.getPage(1);
-    
-    // Generate small thumbnail
-    const thumbnail = await renderPageThumbnail(page, 40, 50);
-    
-    return thumbnail;
   } catch (error) {
-    console.error('Error generating small thumbnail for stored PDF:', error);
-    return null;
+    console.error('Error saving thumbnail to storage:', error);
   }
+}
+
+export async function generateSmallThumbnail(filePath: string, fileId?: string): Promise<string | null> {
+  // For small thumbnails, try to use the cached full-size version first
+  const fullThumbnail = await generateStoredFileThumbnail(filePath, fileId);
+  return fullThumbnail;
 }
 
 async function renderPageThumbnail(page: any, maxWidth: number, maxHeight: number): Promise<string> {

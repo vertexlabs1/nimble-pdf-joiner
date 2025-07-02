@@ -1,31 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileText } from 'lucide-react';
 import { generateStoredFileThumbnail, generateSmallThumbnail } from '@/utils/pdfThumbnailGenerator';
 
 interface PDFThumbnailProps {
   filePath: string;
   filename: string;
+  fileId?: string;
   size: 'small' | 'large';
   className?: string;
+  lazy?: boolean;
 }
 
-export default function PDFThumbnail({ filePath, filename, size, className = "" }: PDFThumbnailProps) {
+export default function PDFThumbnail({ 
+  filePath, 
+  filename, 
+  fileId,
+  size, 
+  className = "",
+  lazy = false 
+}: PDFThumbnailProps) {
   const [thumbnail, setThumbnail] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState(false);
+  const [inView, setInView] = useState(!lazy);
+  const elementRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    generateThumbnail();
-  }, [filePath, size]);
+    if (lazy && elementRef.current) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            setInView(true);
+            setLoading(true);
+            observer.disconnect();
+          }
+        },
+        { threshold: 0.1 }
+      );
+      observer.observe(elementRef.current);
+      return () => observer.disconnect();
+    }
+  }, [lazy]);
+
+  useEffect(() => {
+    if (inView) {
+      generateThumbnail();
+    }
+  }, [filePath, size, inView, fileId]);
 
   const generateThumbnail = async () => {
+    if (!inView) return;
+    
     setLoading(true);
     setError(false);
     
     try {
       const thumbnailData = size === 'small' 
-        ? await generateSmallThumbnail(filePath)
-        : await generateStoredFileThumbnail(filePath);
+        ? await generateSmallThumbnail(filePath, fileId)
+        : await generateStoredFileThumbnail(filePath, fileId);
       
       if (thumbnailData) {
         setThumbnail(thumbnailData);
@@ -40,35 +72,45 @@ export default function PDFThumbnail({ filePath, filename, size, className = "" 
     }
   };
 
+  // Google Drive-style dimensions and styling
   const dimensions = size === 'small' 
     ? 'w-10 h-12' 
-    : 'w-32 h-40';
+    : 'w-40 h-52';
+
+  const containerClasses = size === 'large'
+    ? `${dimensions} ${className} bg-card rounded-lg overflow-hidden border border-border/50 shadow-sm hover:shadow-md transition-all duration-200 hover:border-border`
+    : `${dimensions} ${className} bg-card rounded-md overflow-hidden border border-border/50`;
 
   if (loading) {
     return (
-      <div className={`${dimensions} ${className} bg-muted rounded-md flex items-center justify-center animate-pulse`}>
-        <FileText className={`${size === 'small' ? 'h-4 w-4' : 'h-8 w-8'} text-muted-foreground`} />
+      <div ref={elementRef} className={containerClasses}>
+        <div className="w-full h-full bg-muted/50 flex items-center justify-center animate-pulse">
+          <FileText className={`${size === 'small' ? 'h-4 w-4' : 'h-8 w-8'} text-muted-foreground/50`} />
+        </div>
       </div>
     );
   }
 
   if (error || !thumbnail) {
     return (
-      <div className={`${dimensions} ${className} bg-muted rounded-md flex flex-col items-center justify-center border border-border`}>
-        <FileText className={`${size === 'small' ? 'h-4 w-4' : 'h-8 w-8'} text-muted-foreground`} />
-        {size === 'large' && (
-          <span className="text-xs text-muted-foreground mt-1 text-center px-1">PDF</span>
-        )}
+      <div ref={elementRef} className={containerClasses}>
+        <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center">
+          <FileText className={`${size === 'small' ? 'h-4 w-4' : 'h-8 w-8'} text-muted-foreground/70`} />
+          {size === 'large' && (
+            <span className="text-xs text-muted-foreground/70 mt-1 font-medium">PDF</span>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className={`${dimensions} ${className} overflow-hidden rounded-md border border-border bg-background`}>
+    <div ref={elementRef} className={containerClasses}>
       <img 
         src={thumbnail} 
         alt={`Thumbnail of ${filename}`}
         className="w-full h-full object-cover"
+        loading="lazy"
       />
     </div>
   );

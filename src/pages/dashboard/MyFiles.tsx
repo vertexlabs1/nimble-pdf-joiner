@@ -192,88 +192,90 @@ export default function MyFiles() {
           </div>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
           {files.map((file) => (
-            <Card key={file.id} className="group overflow-hidden hover:shadow-lg transition-all duration-200">
-              <div className="relative">
-                <div className="p-4 flex flex-col items-center space-y-3">
-                  <PDFThumbnail 
-                    filePath={file.file_path}
-                    filename={file.filename}
-                    size="large"
-                    className="shadow-sm"
-                  />
-                  <div className="w-full text-center space-y-1">
-                    <h3 className="font-medium text-card-foreground text-sm truncate" title={file.filename}>
-                      {file.filename}
-                    </h3>
-                    <p className="text-xs text-muted-foreground truncate" title={file.original_filename}>
-                      {file.original_filename}
-                    </p>
-                    <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                      <span>{formatFileSize(file.file_size)}</span>
-                      <span>{formatDate(file.created_at)}</span>
-                    </div>
-                  </div>
-                </div>
+            <div key={file.id} className="group relative">
+              <div className="space-y-2">
+                <PDFThumbnail 
+                  filePath={file.file_path}
+                  filename={file.filename}
+                  fileId={file.id}
+                  size="large"
+                  lazy={true}
+                />
                 
-                {/* Hover overlay with actions */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={() => handleDownload(file)}
-                    disabled={downloading === file.id}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        disabled={deleting === file.id}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete File</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete "{file.filename}"? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(file)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-medium text-foreground truncate" title={file.filename}>
+                    {file.filename.replace(/\.[^/.]+$/, "")}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {formatFileSize(file.file_size)} • {formatDate(file.created_at).split(',')[0]}
+                  </p>
                 </div>
               </div>
-            </Card>
+              
+              {/* Hover overlay with actions */}
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                <Button
+                  size="icon"
+                  variant="secondary"
+                  className="h-8 w-8 bg-background/80 hover:bg-background border-0 shadow-lg backdrop-blur-sm"
+                  onClick={() => handleDownload(file)}
+                  disabled={downloading === file.id}
+                  title="Download"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      className="h-8 w-8 bg-background/80 hover:bg-destructive/10 border-0 shadow-lg backdrop-blur-sm text-destructive hover:text-destructive"
+                      disabled={deleting === file.id}
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete File</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{file.filename}"? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDelete(file)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {files.map((file) => (
-            <Card key={file.id} className="p-4 hover:shadow-sm transition-shadow">
+            <div key={file.id} className="group p-3 rounded-lg hover:bg-muted/30 transition-colors border border-transparent hover:border-border/50">
               <div className="flex items-center gap-4">
                 <PDFThumbnail 
                   filePath={file.file_path}
                   filename={file.filename}
+                  fileId={file.id}
                   size="small"
+                  lazy={true}
                 />
                 
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-card-foreground truncate" title={file.filename}>
+                  <h3 className="font-medium text-foreground truncate" title={file.filename}>
                     {file.filename}
                   </h3>
                   <p className="text-sm text-muted-foreground truncate" title={file.original_filename}>
@@ -282,22 +284,24 @@ export default function MyFiles() {
                 </div>
                 
                 <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="h-4 w-4" />
-                    <span>{formatFileSize(file.file_size)}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <HardDrive className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{formatFileSize(file.file_size)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>{formatDate(file.created_at)}</span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Calendar className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{formatDate(file.created_at)}</span>
                   </div>
                 </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <Button
-                    size="sm"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 hover:bg-secondary"
                     onClick={() => handleDownload(file)}
                     disabled={downloading === file.id}
-                    variant="outline"
+                    title="Download"
                   >
                     <Download className="h-4 w-4" />
                   </Button>
@@ -305,10 +309,11 @@ export default function MyFiles() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
-                        size="sm"
-                        variant="outline"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 hover:bg-destructive/10 text-destructive hover:text-destructive"
                         disabled={deleting === file.id}
-                        className="text-destructive hover:text-destructive"
+                        title="Delete"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -333,7 +338,7 @@ export default function MyFiles() {
                   </AlertDialog>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

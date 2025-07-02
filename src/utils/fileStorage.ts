@@ -7,6 +7,7 @@ export interface UserFile {
   original_filename: string;
   file_path: string;
   file_size: number | null;
+  thumbnail_url?: string | null;
   created_at: string;
   updated_at: string;
 }
