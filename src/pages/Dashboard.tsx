@@ -6,7 +6,8 @@ import DashboardHome from './dashboard/DashboardHome';
 import MyFiles from './dashboard/MyFiles';
 import ToolPage from './dashboard/ToolPage';
 import AdminPanel from './dashboard/AdminPanel';
-import { Merge, Scissors, Shield, RefreshCw, Stamp, Zap, Plus } from 'lucide-react';
+import { DashboardMergeTool } from '@/components/DashboardMergeTool';
+import { Scissors, Shield, RefreshCw, Stamp, Zap, Plus } from 'lucide-react';
 
 export default function Dashboard() {
   return (
@@ -14,22 +15,7 @@ export default function Dashboard() {
       <Routes>
         <Route path="/" element={<DashboardHome />} />
         <Route path="/files" element={<MyFiles />} />
-        <Route 
-          path="/merge" 
-          element={
-            <ToolPage 
-              title="Merge PDFs"
-              description="Combine multiple PDF files into a single document"
-              icon={Merge}
-              features={[
-                "Drag and drop file ordering",
-                "Batch merge multiple files",
-                "Preserve document quality",
-                "Custom page ranges"
-              ]}
-            />
-          } 
-        />
+        <Route path="/merge" element={<DashboardMergeTool />} />
         <Route 
           path="/split" 
           element={
