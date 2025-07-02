@@ -86,6 +86,9 @@ export default function PDFThumbnail({
       <div ref={elementRef} className={containerClasses}>
         <div className="w-full h-full bg-muted/50 flex items-center justify-center animate-pulse">
           <FileText className={`${size === 'small' ? 'h-4 w-4' : 'h-8 w-8'} text-muted-foreground/50`} />
+          {size === 'large' && (
+            <span className="absolute bottom-1 text-xs text-muted-foreground/70 font-medium">Loading...</span>
+          )}
         </div>
       </div>
     );
@@ -94,10 +97,21 @@ export default function PDFThumbnail({
   if (error || !thumbnail) {
     return (
       <div ref={elementRef} className={containerClasses}>
-        <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center">
+        <div className="w-full h-full bg-muted/30 flex flex-col items-center justify-center relative">
           <FileText className={`${size === 'small' ? 'h-4 w-4' : 'h-8 w-8'} text-muted-foreground/70`} />
           {size === 'large' && (
-            <span className="text-xs text-muted-foreground/70 mt-1 font-medium">PDF</span>
+            <div className="absolute bottom-1 text-center">
+              <span className="text-xs text-muted-foreground/70 font-medium block">PDF</span>
+              {error && (
+                <button 
+                  onClick={generateThumbnail}
+                  className="text-xs text-primary hover:underline mt-1"
+                  title="Retry thumbnail generation"
+                >
+                  Retry
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>

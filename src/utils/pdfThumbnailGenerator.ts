@@ -1,11 +1,20 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '@/integrations/supabase/client';
 
-// Set up PDF.js worker
+// Set up PDF.js worker with fallback handling
 try {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  // Try to use local worker first, fallback to CDN
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.js',
+    import.meta.url
+  ).toString();
 } catch (error) {
-  console.warn('Failed to set PDF.js worker source:', error);
+  console.warn('Failed to set local PDF.js worker, trying CDN:', error);
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  } catch (cdnError) {
+    console.error('Failed to set PDF.js worker source:', cdnError);
+  }
 }
 
 // In-memory cache for generated thumbnails
@@ -72,27 +81,51 @@ async function getCachedThumbnailUrl(fileId: string): Promise<string | null> {
 
 async function generateAndCacheThumbnail(filePath: string, fileId?: string): Promise<string | null> {
   try {
+    console.log('Starting thumbnail generation for:', filePath);
+    
     // Download PDF from Supabase storage
     const { data, error } = await supabase.storage
       .from('user_files')
       .download(filePath);
 
     if (error) {
-      console.error('Error downloading PDF for thumbnail:', error);
+      console.error('Error downloading PDF for thumbnail:', error, { filePath });
       return null;
     }
 
+    if (!data) {
+      console.error('No data received for PDF download:', filePath);
+      return null;
+    }
+
+    console.log('PDF downloaded successfully, size:', data.size, 'bytes');
+
     // Convert blob to array buffer
     const arrayBuffer = await data.arrayBuffer();
+    console.log('Array buffer created, size:', arrayBuffer.byteLength, 'bytes');
     
-    // Load PDF document
-    const pdfDocument = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    // Load PDF document with timeout
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: arrayBuffer,
+      verbosity: 0 // Reduce console noise
+    });
+    
+    const pdfDocument = await Promise.race([
+      loadingTask.promise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('PDF loading timeout')), 10000)
+      )
+    ]) as any;
+    
+    console.log('PDF document loaded, pages:', pdfDocument.numPages);
     
     // Get first page
     const page = await pdfDocument.getPage(1);
+    console.log('First page loaded');
     
     // Generate high-quality thumbnail
     const thumbnail = await renderPageThumbnail(page, 200, 260);
+    console.log('Thumbnail generated successfully');
     
     // Cache in memory
     thumbnailCache.set(filePath, thumbnail);
@@ -104,7 +137,11 @@ async function generateAndCacheThumbnail(filePath: string, fileId?: string): Pro
     
     return thumbnail;
   } catch (error) {
-    console.error('Error generating thumbnail for stored PDF:', error);
+    console.error('Error generating thumbnail for stored PDF:', error, { 
+      filePath, 
+      fileId,
+      workerSrc: pdfjsLib.GlobalWorkerOptions.workerSrc 
+    });
     return null;
   }
 }
