@@ -1,21 +1,5 @@
-import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '@/integrations/supabase/client';
-
-// Set up PDF.js worker with fallback handling
-try {
-  // Try to use local worker first, fallback to CDN
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.js',
-    import.meta.url
-  ).toString();
-} catch (error) {
-  console.warn('Failed to set local PDF.js worker, trying CDN:', error);
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-  } catch (cdnError) {
-    console.error('Failed to set PDF.js worker source:', cdnError);
-  }
-}
+import { initializePDFWorker, getPDFLib } from './pdfConfig';
 
 // In-memory cache for generated thumbnails
 const thumbnailCache = new Map<string, string>();
@@ -83,6 +67,13 @@ async function generateAndCacheThumbnail(filePath: string, fileId?: string): Pro
   try {
     console.log('Starting thumbnail generation for:', filePath);
     
+    // Ensure PDF.js worker is initialized
+    const workerReady = await initializePDFWorker();
+    if (!workerReady) {
+      console.error('PDF.js worker initialization failed');
+      return null;
+    }
+    
     // Download PDF from Supabase storage
     const { data, error } = await supabase.storage
       .from('user_files')
@@ -103,6 +94,8 @@ async function generateAndCacheThumbnail(filePath: string, fileId?: string): Pro
     // Convert blob to array buffer
     const arrayBuffer = await data.arrayBuffer();
     console.log('Array buffer created, size:', arrayBuffer.byteLength, 'bytes');
+    
+    const pdfjsLib = getPDFLib();
     
     // Load PDF document with timeout
     const loadingTask = pdfjsLib.getDocument({ 
@@ -139,8 +132,7 @@ async function generateAndCacheThumbnail(filePath: string, fileId?: string): Pro
   } catch (error) {
     console.error('Error generating thumbnail for stored PDF:', error, { 
       filePath, 
-      fileId,
-      workerSrc: pdfjsLib.GlobalWorkerOptions.workerSrc 
+      fileId
     });
     return null;
   }
