@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { getUserFiles, downloadUserFile, deleteUserFile, type UserFile } from '@/utils/fileStorage';
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,10 +24,15 @@ export default function MyFiles() {
   const [downloading, setDownloading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    loadFiles();
-  }, []);
+    if (!authLoading && user) {
+      loadFiles();
+    } else if (!authLoading && !user) {
+      setLoading(false);
+    }
+  }, [authLoading, user]);
 
   const loadFiles = async () => {
     setLoading(true);

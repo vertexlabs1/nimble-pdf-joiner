@@ -73,6 +73,12 @@ export async function uploadMergedPDF(
 
 export async function getUserFiles(): Promise<UserFile[]> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('User not authenticated when fetching files');
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('user_files')
       .select('*')
