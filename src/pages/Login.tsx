@@ -124,16 +124,28 @@ export default function Login() {
                     Signing in...
                   </div>
                 ) : (
-                  'Sign in to Dashboard'
+                  'Sign in'
                 )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                onClick={() => {/* TODO: Implement sign up */}}
+              >
+                Sign up
               </Button>
             </form>
 
             {/* Footer */}
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Professional access only
-              </p>
+              <button 
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {/* TODO: Implement forgot password */}}
+              >
+                Forgot password?
+              </button>
             </div>
           </div>
         </div>
