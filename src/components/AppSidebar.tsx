@@ -11,6 +11,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
+  SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -34,30 +36,47 @@ export function AppSidebar() {
   const isCollapsed = state === "collapsed";
 
   return (
-    <Sidebar className={isCollapsed ? "w-14" : "w-64"} collapsible="icon">
-      <SidebarContent>
+    <Sidebar className={`${isCollapsed ? "w-14" : "w-64"} sidebar-gradient`} collapsible="icon">
+      {/* Logo Header */}
+      <SidebarHeader className="p-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-primary/10 rounded-lg">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col">
+              <span className="font-bold text-lg text-foreground">PDF Pro</span>
+              <span className="text-xs text-muted-foreground">Professional Tools</span>
+            </div>
+          )}
+        </div>
+      </SidebarHeader>
+      
+      <SidebarSeparator className="mx-4" />
+      
+      <SidebarContent className="px-2">
         {/* Main PDF Tools */}
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-semibold text-muted-foreground px-2 mb-2">
+        <SidebarGroup className="px-2">
+          <SidebarGroupLabel className="text-sm font-semibold text-muted-foreground px-2 mb-3">
             PDF Tools
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-2">
               {mainNavigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        `sidebar-nav-button ${
                           isActive
-                            ? "bg-primary text-primary-foreground"
-                            : "hover:bg-muted"
+                            ? "sidebar-nav-button-active"
+                            : "sidebar-nav-button-inactive"
                         }`
                       }
                     >
-                      <item.icon className="h-4 w-4" />
-                      {!isCollapsed && <span className="text-sm font-medium">{item.title}</span>}
+                      <item.icon className="h-5 w-5" />
+                      {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -67,27 +86,28 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Secondary Actions */}
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel className="text-xs font-medium text-muted-foreground/80 px-2 mb-2">
+        <SidebarGroup className="mt-auto px-2">
+          <SidebarSeparator className="mb-4" />
+          <SidebarGroupLabel className="text-xs font-medium text-muted-foreground/80 px-2 mb-3">
             Other
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-1">
               {secondaryNavigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        `sidebar-secondary-button ${
                           isActive
-                            ? "bg-secondary text-secondary-foreground"
-                            : "hover:bg-muted/50 text-muted-foreground"
+                            ? "sidebar-secondary-button-active"
+                            : "text-muted-foreground"
                         }`
                       }
                     >
-                      <item.icon className="h-3 w-3" />
-                      {!isCollapsed && <span className="text-sm">{item.title}</span>}
+                      <item.icon className="h-4 w-4" />
+                      {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -99,15 +119,15 @@ export function AppSidebar() {
                     <NavLink
                       to="/dashboard/admin"
                       className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        `sidebar-secondary-button ${
                           isActive
-                            ? "bg-secondary text-secondary-foreground"
-                            : "hover:bg-muted/50 text-muted-foreground"
+                            ? "sidebar-secondary-button-active"
+                            : "text-muted-foreground"
                         }`
                       }
                     >
-                      <BarChart3 className="h-3 w-3" />
-                      {!isCollapsed && <span className="text-sm">App Admin</span>}
+                      <BarChart3 className="h-4 w-4" />
+                      {!isCollapsed && <span>App Admin</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
