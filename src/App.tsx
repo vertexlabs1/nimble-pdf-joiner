@@ -30,7 +30,7 @@ const App = () => (
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/login" element={<Login />} />
             <Route 
-              path="/dashboard" 
+              path="/dashboard/*" 
               element={
                 <ProtectedRoute requireAdmin={true}>
                   <Dashboard />
