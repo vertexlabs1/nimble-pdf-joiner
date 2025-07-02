@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Upload, FolderOpen, Download, Trash2, Calendar, HardDrive } from 'lucide-react';
+import { FileText, Upload, FolderOpen, Download, Trash2, Calendar, HardDrive, LayoutGrid, LayoutList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { getUserFiles, downloadUserFile, deleteUserFile, type UserFile } from '@/utils/fileStorage';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import PDFThumbnail from '@/components/PDFThumbnail';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +25,7 @@ export default function MyFiles() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
@@ -143,12 +146,22 @@ export default function MyFiles() {
           <h1 className="text-2xl font-bold text-foreground">My Files</h1>
           <p className="text-muted-foreground">Manage your stored PDF documents</p>
         </div>
-        <Button asChild className="flex items-center gap-2">
-          <NavLink to="/dashboard/merge">
-            <Upload className="h-4 w-4" />
-            Create New File
-          </NavLink>
-        </Button>
+        <div className="flex items-center gap-4">
+          <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value as 'grid' | 'list')}>
+            <ToggleGroupItem value="grid" aria-label="Grid view">
+              <LayoutGrid className="h-4 w-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem value="list" aria-label="List view">
+              <LayoutList className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          <Button asChild className="flex items-center gap-2">
+            <NavLink to="/dashboard/merge">
+              <Upload className="h-4 w-4" />
+              Create New File
+            </NavLink>
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -178,77 +191,147 @@ export default function MyFiles() {
             </Button>
           </div>
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      ) : viewMode === 'grid' ? (
+        <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {files.map((file) => (
-            <Card key={file.id} className="p-6 space-y-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
-                    <FileText className="h-6 w-6 text-red-600" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-medium text-card-foreground truncate" title={file.filename}>
+            <Card key={file.id} className="group overflow-hidden hover:shadow-lg transition-all duration-200">
+              <div className="relative">
+                <div className="p-4 flex flex-col items-center space-y-3">
+                  <PDFThumbnail 
+                    filePath={file.file_path}
+                    filename={file.filename}
+                    size="large"
+                    className="shadow-sm"
+                  />
+                  <div className="w-full text-center space-y-1">
+                    <h3 className="font-medium text-card-foreground text-sm truncate" title={file.filename}>
                       {file.filename}
                     </h3>
-                    <p className="text-sm text-muted-foreground truncate" title={file.original_filename}>
-                      From: {file.original_filename}
+                    <p className="text-xs text-muted-foreground truncate" title={file.original_filename}>
+                      {file.original_filename}
                     </p>
+                    <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+                      <span>{formatFileSize(file.file_size)}</span>
+                      <span>{formatDate(file.created_at)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <HardDrive className="h-4 w-4" />
-                  <span>{formatFileSize(file.file_size)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  <span>{formatDate(file.created_at)}</span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <Button
-                  size="sm"
-                  onClick={() => handleDownload(file)}
-                  disabled={downloading === file.id}
-                  className="flex-1"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {downloading === file.id ? 'Downloading...' : 'Download'}
-                </Button>
                 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={deleting === file.id}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete File</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete "{file.filename}"? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(file)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                {/* Hover overlay with actions */}
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleDownload(file)}
+                    disabled={downloading === file.id}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={deleting === file.id}
                       >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete File</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{file.filename}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(file)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {files.map((file) => (
+            <Card key={file.id} className="p-4 hover:shadow-sm transition-shadow">
+              <div className="flex items-center gap-4">
+                <PDFThumbnail 
+                  filePath={file.file_path}
+                  filename={file.filename}
+                  size="small"
+                />
+                
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-card-foreground truncate" title={file.filename}>
+                    {file.filename}
+                  </h3>
+                  <p className="text-sm text-muted-foreground truncate" title={file.original_filename}>
+                    From: {file.original_filename}
+                  </p>
+                </div>
+                
+                <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="h-4 w-4" />
+                    <span>{formatFileSize(file.file_size)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    <span>{formatDate(file.created_at)}</span>
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => handleDownload(file)}
+                    disabled={downloading === file.id}
+                    variant="outline"
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={deleting === file.id}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete File</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete "{file.filename}"? This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDelete(file)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </Card>
           ))}
