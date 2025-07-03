@@ -179,7 +179,8 @@ async function renderPDFPage(
     // Ensure worker is initialized
     const workerReady = await ensureWorkerInit();
     if (!workerReady) {
-      throw new Error('PDF.js worker failed to initialize');
+      console.warn('PDF.js worker not available, using placeholder');
+      return null;
     }
 
     // Validate inputs

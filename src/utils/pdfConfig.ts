@@ -11,44 +11,36 @@ export async function initializePDFWorker(): Promise<boolean> {
   console.log('PDF.js worker initialization starting...');
 
   try {
-    // Try local worker first (both dev and production)
-    try {
-      const workerUrl = new URL(
-        'pdfjs-dist/build/pdf.worker.min.js', 
-        import.meta.url
-      ).href;
-      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-      console.log('PDF.js worker configured with local URL:', workerUrl);
-      
-      // Test local worker
-      if (await testWorker()) {
-        console.log('PDF.js worker successful with local worker');
-        workerInitialized = true;
-        return true;
-      }
-    } catch (localError) {
-      console.warn('Local worker setup failed:', localError);
+    // Try static worker file from public directory first
+    const staticWorkerUrl = '/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = staticWorkerUrl;
+    console.log('PDF.js worker configured with static URL:', staticWorkerUrl);
+    
+    if (await testWorker()) {
+      console.log('PDF.js worker successful with static worker');
+      workerInitialized = true;
+      return true;
     }
 
-    // Fallback to CDN sources only if local fails
+    // Fallback to CDN sources if static fails
     const workerSources = [
       `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`,
-      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js',
+      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
     ];
 
     for (const workerUrl of workerSources) {
       try {
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-        console.log('Trying PDF.js worker URL:', workerUrl);
+        console.log('Trying fallback PDF.js worker URL:', workerUrl);
         
         if (await testWorker()) {
-          console.log('PDF.js worker successful with:', workerUrl);
+          console.log('PDF.js worker successful with fallback:', workerUrl);
           workerInitialized = true;
           return true;
         }
       } catch (error) {
-        console.warn('Worker failed with URL:', workerUrl, error);
+        console.warn('Fallback worker failed with URL:', workerUrl, error);
       }
     }
 
