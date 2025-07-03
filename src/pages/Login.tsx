@@ -12,7 +12,8 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const { signIn, signUp, user, isAdmin, loading, adminLoading } = useAuth();
+  const [isResetMode, setIsResetMode] = useState(false);
+  const { signIn, signUp, resetPassword, user, isAdmin, loading, adminLoading } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
 
@@ -46,7 +47,14 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const { error } = isSignUp ? await signUp(email, password) : await signIn(email, password);
+      let result;
+      if (isResetMode) {
+        result = await resetPassword(email);
+      } else {
+        result = isSignUp ? await signUp(email, password) : await signIn(email, password);
+      }
+
+      const { error } = result;
 
       if (error) {
         let errorMessage = error.message;
@@ -58,23 +66,37 @@ export default function Login() {
           errorMessage = 'An account with this email already exists. Try signing in instead.';
         } else if (error.message?.includes('Signup not allowed')) {
           errorMessage = 'Account registration is currently disabled.';
+        } else if (error.message?.includes('Email not confirmed')) {
+          errorMessage = 'Please check your email and click the confirmation link before signing in.';
+        } else if (error.message?.includes('Invalid email')) {
+          errorMessage = 'Please enter a valid email address.';
         }
 
         toast({
-          title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
+          title: isResetMode ? "Password Reset Failed" : isSignUp ? "Sign Up Failed" : "Sign In Failed",
           description: errorMessage,
           variant: "destructive",
         });
-      } else if (isSignUp) {
-        toast({
-          title: "Account Created",
-          description: "Your account has been created successfully!",
-          variant: "default",
-        });
+      } else {
+        if (isResetMode) {
+          toast({
+            title: "Password Reset Email Sent",
+            description: "Check your email for a password reset link.",
+            variant: "default",
+          });
+          setIsResetMode(false);
+        } else if (isSignUp) {
+          toast({
+            title: "Account Created",
+            description: "Please check your email to confirm your account before signing in.",
+            variant: "default",
+          });
+          setIsSignUp(false);
+        }
       }
     } catch (error) {
       toast({
-        title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
+        title: isResetMode ? "Password Reset Failed" : isSignUp ? "Sign Up Failed" : "Sign In Failed",
         description: "An unexpected error occurred",
         variant: "destructive",
       });
@@ -99,10 +121,15 @@ export default function Login() {
                 </div>
               </div>
               <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                {isSignUp ? 'Create Account' : 'Pro Dashboard'}
+                {isResetMode ? 'Reset Password' : isSignUp ? 'Create Account' : 'Pro Dashboard'}
               </h1>
               <p className="text-lg text-muted-foreground">
-                {isSignUp ? 'Join to access professional PDF management tools' : 'Access your professional PDF management tools'}
+                {isResetMode 
+                  ? 'Enter your email to receive a password reset link' 
+                  : isSignUp 
+                    ? 'Join to access professional PDF management tools' 
+                    : 'Access your professional PDF management tools'
+                }
               </p>
             </div>
 
@@ -124,20 +151,22 @@ export default function Login() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label htmlFor="password" className="text-sm font-medium text-foreground">
-                    {isSignUp ? 'Set Password' : 'Password'}
-                  </label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={isSignUp ? "Create a password" : "Enter your password"}
-                    required
-                    className="h-12 text-base transition-all duration-200"
-                  />
-                </div>
+                {!isResetMode && (
+                  <div className="space-y-2">
+                    <label htmlFor="password" className="text-sm font-medium text-foreground">
+                      {isSignUp ? 'Set Password' : 'Password'}
+                    </label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={isSignUp ? "Create a password" : "Enter your password"}
+                      required
+                      className="h-12 text-base transition-all duration-200"
+                    />
+                  </div>
+                )}
               </div>
 
               <Button
@@ -145,35 +174,50 @@ export default function Login() {
                 disabled={isLoading}
                 className="w-full h-12 text-base font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
               >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                    Signing in...
-                  </div>
-                  ) : (
-                    isSignUp ? 'Create Account' : 'Sign in'
-                  )}
-                </Button>
+                 {isLoading ? (
+                   <div className="flex items-center gap-2">
+                     <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                     {isResetMode ? 'Sending...' : isSignUp ? 'Creating account...' : 'Signing in...'}
+                   </div>
+                   ) : (
+                     isResetMode ? 'Send Reset Email' : isSignUp ? 'Create Account' : 'Sign in'
+                   )}
+                 </Button>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                  onClick={() => setIsSignUp(!isSignUp)}
-                >
-                  {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
-                </Button>
+                 {!isResetMode && (
+                   <Button
+                     type="button"
+                     variant="outline"
+                     className="w-full h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                     onClick={() => setIsSignUp(!isSignUp)}
+                   >
+                     {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+                   </Button>
+                 )}
+
+                 {isResetMode && (
+                   <Button
+                     type="button"
+                     variant="outline"
+                     className="w-full h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                     onClick={() => setIsResetMode(false)}
+                   >
+                     Back to Sign In
+                   </Button>
+                 )}
             </form>
 
             {/* Footer */}
-            <div className="text-center">
-              <button 
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => {/* TODO: Implement forgot password */}}
-              >
-                Forgot password?
-              </button>
-            </div>
+            {!isResetMode && (
+              <div className="text-center">
+                <button 
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setIsResetMode(true)}
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
           </div>
         </div>
 

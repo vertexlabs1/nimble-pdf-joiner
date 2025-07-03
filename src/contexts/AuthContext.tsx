@@ -11,7 +11,10 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
   isAdmin: boolean;
+  subscriptionStatus: string;
+  hasActiveSubscription: (tier?: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,8 +34,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [adminLoading, setAdminLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string>('free');
 
-  const checkAdminStatus = async (userId: string) => {
+  const checkAdminAndSubscriptionStatus = async (userId: string) => {
     if (adminChecked) return;
     
     setAdminLoading(true);
@@ -41,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const timeoutId = setTimeout(() => {
       console.warn('Admin check timeout - assuming non-admin');
       setIsAdmin(false);
+      setSubscriptionStatus('free');
       setAdminChecked(true);
       setAdminLoading(false);
     }, 5000);
@@ -48,23 +53,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('is_super_admin')
+        .select('is_super_admin, subscription_status')
         .eq('auth_user_id', userId)
         .maybeSingle();
       
       clearTimeout(timeoutId);
       
       if (error) {
-        console.error('Error checking admin status:', error);
+        console.error('Error checking user status:', error);
         setIsAdmin(false);
+        setSubscriptionStatus('free');
       } else {
         setIsAdmin(data?.is_super_admin || false);
+        setSubscriptionStatus(data?.subscription_status || 'free');
       }
       setAdminChecked(true);
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error('Error checking admin status:', error);
+      console.error('Error checking user status:', error);
       setIsAdmin(false);
+      setSubscriptionStatus('free');
       setAdminChecked(true);
     } finally {
       setAdminLoading(false);
@@ -85,10 +93,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user?.id) {
           // Reset admin check for new user
           setAdminChecked(false);
-          checkAdminStatus(session.user.id);
+          checkAdminAndSubscriptionStatus(session.user.id);
         } else {
           // Clear admin state for logged out users
           setIsAdmin(false);
+          setSubscriptionStatus('free');
           setAdminChecked(true);
           setAdminLoading(false);
         }
@@ -106,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user?.id) {
-        checkAdminStatus(session.user.id);
+        checkAdminAndSubscriptionStatus(session.user.id);
       } else {
         // No session, stop loading immediately
         setAdminChecked(true);
@@ -138,9 +147,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string) => {
     setLoading(true);
     
+    const redirectUrl = `${window.location.origin}/dashboard`;
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
     });
     
     // Always reset loading state after signup attempt
@@ -149,9 +163,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
+  const resetPassword = async (email: string) => {
+    const redirectUrl = `${window.location.origin}/login?reset=true`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl
+    });
+    
+    return { error };
+  };
+
   const signOut = async () => {
     setAdminChecked(false);
+    setSubscriptionStatus('free');
     await supabase.auth.signOut();
+  };
+
+  const hasActiveSubscription = (tier: string = 'pro'): boolean => {
+    if (tier === 'free') return true;
+    if (subscriptionStatus === 'enterprise') return true;
+    if (tier === 'pro' && (subscriptionStatus === 'pro' || subscriptionStatus === 'enterprise')) return true;
+    return subscriptionStatus === tier;
   };
 
   const value = {
@@ -162,7 +194,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signIn,
     signUp,
     signOut,
+    resetPassword,
     isAdmin,
+    subscriptionStatus,
+    hasActiveSubscription,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
