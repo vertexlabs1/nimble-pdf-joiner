@@ -13,6 +13,7 @@ import { logMergeActivity, calculateTotalSizeMB } from '@/utils/analytics';
 import { EncryptedPDFDialog } from '@/components/EncryptedPDFDialog';
 import { MergeSuccess } from '@/components/MergeSuccess';
 import { MergeError } from '@/components/MergeError';
+import { FilenameInput } from '@/components/FilenameInput';
 
 export const DashboardMergeTool = () => {
   const { user } = useAuth();
@@ -26,17 +27,38 @@ export const DashboardMergeTool = () => {
   const [customFilename, setCustomFilename] = useState('merged-document.pdf');
 
   const handleFilesAdded = (newFiles: File[]) => {
-    setFiles(prevFiles => [...prevFiles, ...newFiles]);
+    const updatedFiles = [...files, ...newFiles];
+    setFiles(updatedFiles);
     setMergeResult(null);
+    
+    // Auto-generate filename when files are added
+    if (updatedFiles.length > 0) {
+      const defaultName = `merged-${updatedFiles[0].name.replace('.pdf', '')}.pdf`;
+      setCustomFilename(defaultName);
+    }
   };
 
   const handleReorderFiles = (newFiles: File[]) => {
     setFiles(newFiles);
+    
+    // Update filename when files are reordered
+    if (newFiles.length > 0) {
+      const defaultName = `merged-${newFiles[0].name.replace('.pdf', '')}.pdf`;
+      setCustomFilename(defaultName);
+    }
   };
 
   const handleRemoveFile = (index: number) => {
     const newFiles = files.filter((_, i) => i !== index);
     setFiles(newFiles);
+    
+    // Update filename when files are removed
+    if (newFiles.length > 0) {
+      const defaultName = `merged-${newFiles[0].name.replace('.pdf', '')}.pdf`;
+      setCustomFilename(defaultName);
+    } else {
+      setCustomFilename('merged-document.pdf');
+    }
   };
 
   const performMerge = async (includeEncrypted: boolean = true) => {
@@ -55,17 +77,14 @@ export const DashboardMergeTool = () => {
           console.warn('Analytics logging failed silently:', err);
         });
 
-        const defaultName = files.length > 0 
-          ? `merged-${files[0].name.replace('.pdf', '')}.pdf`
-          : 'merged-document.pdf';
-        setCustomFilename(defaultName);
+        const finalFilename = getDisplayFilename();
 
         // Handle storage if enabled
         if (storeInAccount && result.mergedPdfBytes && user) {
           try {
             const uploadResult = await uploadMergedPDF(
               result.mergedPdfBytes,
-              defaultName,
+              finalFilename,
               files
             );
 
@@ -104,9 +123,12 @@ export const DashboardMergeTool = () => {
         } else {
           toast({
             title: 'Success!',
-            description: 'Your PDFs have been merged successfully',
+            description: `Your PDFs have been merged successfully and "${finalFilename}" is downloading`,
           });
         }
+
+        // Auto-download the merged file
+        downloadBlob(result.mergedPdfBytes, finalFilename);
       } else {
         logMergeActivity(files.length, totalSizeMB, true).catch(err => {
           console.warn('Analytics logging failed silently:', err);
@@ -237,8 +259,21 @@ export const DashboardMergeTool = () => {
           </div>
         )}
 
+        {/* Filename Input */}
+        {files.length > 0 && !mergeResult && (
+          <div className="space-y-4 border-t pt-6">
+            <h3 className="text-lg font-semibold text-card-foreground">
+              Set Filename
+            </h3>
+            <FilenameInput
+              defaultFilename={customFilename}
+              onFilenameChange={setCustomFilename}
+            />
+          </div>
+        )}
+
         {/* Storage Toggle */}
-        {files.length > 0 && (
+        {files.length > 0 && !mergeResult && (
           <div className="space-y-4 border-t pt-6">
             <div className="flex items-center space-x-3">
               <Checkbox
@@ -283,7 +318,7 @@ export const DashboardMergeTool = () => {
               ) : (
                 <>
                   <FileText className="h-5 w-5 mr-2" />
-                  Merge {files.length} PDFs
+                  Merge & Download {files.length} PDFs
                 </>
               )}
             </Button>
@@ -296,9 +331,7 @@ export const DashboardMergeTool = () => {
             {mergeResult.success ? (
               <MergeSuccess
                 mergeResult={mergeResult}
-                customFilename={customFilename}
-                onFilenameChange={handleFilenameChange}
-                onDownload={handleDownload}
+                finalFilename={getDisplayFilename()}
               />
             ) : (
               <MergeError

@@ -191,9 +191,7 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
     return mergeResult.success ? (
       <MergeSuccess
         mergeResult={mergeResult}
-        customFilename={customFilename}
-        onFilenameChange={handleFilenameChange}
-        onDownload={handleDownload}
+        finalFilename={getDisplayFilename()}
       />
     ) : (
       <MergeError

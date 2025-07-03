@@ -1,22 +1,16 @@
 
-import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, FileText, Info, AlertTriangle } from 'lucide-react';
+import { FileText, Info, AlertTriangle, CheckCircle } from 'lucide-react';
 import { MergeResult } from '@/utils/pdfUtils';
-import { FilenameInput } from '@/components/FilenameInput';
 
 interface MergeSuccessProps {
   mergeResult: MergeResult;
-  customFilename: string;
-  onFilenameChange: (filename: string) => void;
-  onDownload: () => void;
+  finalFilename: string;
 }
 
 export const MergeSuccess = ({ 
   mergeResult, 
-  customFilename, 
-  onFilenameChange, 
-  onDownload 
+  finalFilename 
 }: MergeSuccessProps) => {
   return (
     <div className="space-y-4">
@@ -57,29 +51,18 @@ export const MergeSuccess = ({
       <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
         <div className="flex items-center justify-center mb-4">
           <div className="bg-green-100 p-3 rounded-full">
-            <FileText className="h-6 w-6 text-green-600" />
+            <CheckCircle className="h-6 w-6 text-green-600" />
           </div>
         </div>
         <h3 className="text-lg font-semibold text-green-900 mb-2">
-          PDF Successfully Merged!
+          PDF Successfully Merged & Downloaded!
         </h3>
-        <p className="text-green-700 mb-6">
+        <p className="text-green-700 mb-4">
           {mergeResult.processedFiles.length} PDF files combined into one document with {mergeResult.totalPages} total pages.
         </p>
-        
-        <FilenameInput
-          defaultFilename={customFilename}
-          onFilenameChange={onFilenameChange}
-        />
-        
-        <Button
-          onClick={onDownload}
-          className="bg-green-600 hover:bg-green-700 text-white"
-          size="lg"
-        >
-          <Download className="h-5 w-5 mr-2" />
-          Download Merged PDF
-        </Button>
+        <p className="text-green-600 font-medium">
+          File saved as: <span className="font-mono">{finalFilename}</span>
+        </p>
       </div>
     </div>
   );
