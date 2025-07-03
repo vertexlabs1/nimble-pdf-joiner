@@ -93,7 +93,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user?.id) {
           // Reset admin check for new user
           setAdminChecked(false);
-          checkAdminAndSubscriptionStatus(session.user.id);
+          setTimeout(() => {
+            checkAdminAndSubscriptionStatus(session.user.id);
+          }, 0);
         } else {
           // Clear admin state for logged out users
           setIsAdmin(false);
@@ -115,7 +117,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user?.id) {
-        checkAdminAndSubscriptionStatus(session.user.id);
+        setTimeout(() => {
+          checkAdminAndSubscriptionStatus(session.user.id);
+        }, 0);
       } else {
         // No session, stop loading immediately
         setAdminChecked(true);
