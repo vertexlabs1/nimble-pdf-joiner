@@ -1,17 +1,21 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-// CDN worker URLs with fallbacks for maximum reliability
+// CDN worker URLs with correct paths for v5.3.31 and fallbacks
 const CDN_WORKERS = [
-  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
-  `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+  // v5.3.31 uses /legacy/build/ path
+  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.js`,
+  `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.js`,
+  // Fallback to older working version
+  `https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.min.js`,
+  `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js`,
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`
 ];
 
 let workerInitialized = false;
 let workerInitPromise: Promise<boolean> | null = null;
 
-// Test and validate worker URL
+// Test and validate worker URL with detailed logging
 const testWorkerUrl = async (workerUrl: string): Promise<boolean> => {
   try {
     console.log(`🔧 Testing worker URL: ${workerUrl}`);
@@ -19,6 +23,13 @@ const testWorkerUrl = async (workerUrl: string): Promise<boolean> => {
     const response = await fetch(workerUrl, { 
       method: 'HEAD',
       mode: 'cors'
+    });
+    
+    console.log(`📊 Response for ${workerUrl}:`, {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries())
     });
     
     if (!response.ok) {
@@ -47,8 +58,12 @@ const initializeWorker = async (): Promise<boolean> => {
   workerInitPromise = (async () => {
     console.log('🚀 Initializing PDF.js worker...');
     console.log('PDF.js version:', pdfjsLib.version);
+    console.log('Available worker URLs:', CDN_WORKERS);
     
-    for (const workerUrl of CDN_WORKERS) {
+    for (let i = 0; i < CDN_WORKERS.length; i++) {
+      const workerUrl = CDN_WORKERS[i];
+      console.log(`🔄 Trying worker URL ${i + 1}/${CDN_WORKERS.length}: ${workerUrl}`);
+      
       const isValid = await testWorkerUrl(workerUrl);
       if (isValid) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -56,6 +71,8 @@ const initializeWorker = async (): Promise<boolean> => {
         workerInitialized = true;
         return true;
       }
+      
+      console.log(`❌ Worker URL ${i + 1} failed, trying next...`);
     }
     
     console.error('❌ All PDF.js worker URLs failed - PDF operations will not work');
