@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 // Unified thumbnail cache
 const thumbnailCache = new Map<string, string>();
 const generationPromises = new Map<string, Promise<string | null>>();
+const failedAttempts = new Map<string, number>();
+const MAX_RETRIES = 3;
 
 interface ThumbnailOptions {
   width?: number;
@@ -42,12 +44,28 @@ export async function generateThumbnail(
     return { success: true, data: thumbnailCache.get(cacheKey)! };
   }
 
+  // Check if we've exceeded retry attempts
+  const attempts = failedAttempts.get(cacheKey) || 0;
+  if (attempts >= MAX_RETRIES) {
+    return { 
+      success: false, 
+      error: 'Max retries exceeded', 
+      data: generatePlaceholder(width, height),
+      fallback: true 
+    };
+  }
+
   // Check if generation is in progress
   if (generationPromises.has(cacheKey)) {
-    const result = await generationPromises.get(cacheKey)!;
-    return result 
-      ? { success: true, data: result }
-      : { success: false, error: 'Generation failed' };
+    try {
+      const result = await generationPromises.get(cacheKey)!;
+      return result 
+        ? { success: true, data: result }
+        : { success: false, error: 'Generation failed', data: generatePlaceholder(width, height) };
+    } catch (error) {
+      failedAttempts.set(cacheKey, attempts + 1);
+      return { success: false, error: 'Generation failed', data: generatePlaceholder(width, height) };
+    }
   }
 
   // Start new generation
@@ -61,10 +79,18 @@ export async function generateThumbnail(
     const result = await generationPromise;
     if (result) {
       thumbnailCache.set(cacheKey, result);
+      // Reset failed attempts on success
+      failedAttempts.delete(cacheKey);
       return { success: true, data: result };
     } else {
+      // Increment failed attempts
+      failedAttempts.set(cacheKey, attempts + 1);
       return { success: false, error: 'Failed to generate thumbnail', data: generatePlaceholder(width, height) };
     }
+  } catch (error) {
+    // Increment failed attempts on error
+    failedAttempts.set(cacheKey, attempts + 1);
+    return { success: false, error: 'Failed to generate thumbnail', data: generatePlaceholder(width, height) };
   } finally {
     generationPromises.delete(cacheKey);
   }

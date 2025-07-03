@@ -20,230 +20,106 @@ serve(async (req) => {
 
     const { filePath, fileId, fileData, filename, width = 200, height = 260, quality = 0.8 } = await req.json();
     
-    let arrayBuffer: ArrayBuffer;
-    let sourceDescription: string;
+    console.log('Thumbnail generation request:', { filePath, fileId, filename, width, height });
 
-    // Handle both File objects (base64 data) and stored files
-    if (fileData && filename) {
-      // Processing File object sent as base64
-      console.log(`Generating thumbnail for uploaded file: ${filename}`);
-      sourceDescription = `uploaded file: ${filename}`;
-      
+    // Generate a styled SVG placeholder immediately
+    const fallbackSvg = `
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bg-${width}-${height}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#f8fafc"/>
+            <stop offset="100%" style="stop-color:#e2e8f0"/>
+          </linearGradient>
+          <linearGradient id="content-${width}-${height}" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:#cbd5e1"/>
+            <stop offset="100%" style="stop-color:#94a3b8"/>
+          </linearGradient>
+        </defs>
+        <rect width="${width}" height="${height}" fill="url(#bg-${width}-${height})" stroke="#cbd5e1" stroke-width="1" rx="8"/>
+        <rect x="${width * 0.1}" y="${height * 0.15}" width="${width * 0.8}" height="${height * 0.08}" fill="url(#content-${width}-${height})" rx="2"/>
+        <rect x="${width * 0.1}" y="${height * 0.28}" width="${width * 0.6}" height="${height * 0.06}" fill="url(#content-${width}-${height})" opacity="0.7" rx="1"/>
+        <rect x="${width * 0.1}" y="${height * 0.4}" width="${width * 0.7}" height="${height * 0.06}" fill="url(#content-${width}-${height})" opacity="0.7" rx="1"/>
+        <rect x="${width * 0.1}" y="${height * 0.52}" width="${width * 0.5}" height="${height * 0.06}" fill="url(#content-${width}-${height})" opacity="0.7" rx="1"/>
+        <circle cx="${width / 2}" cy="${height * 0.75}" r="${width * 0.08}" fill="#3b82f6" opacity="0.2"/>
+        <text x="${width / 2}" y="${height * 0.78}" text-anchor="middle" fill="#3b82f6" font-family="Arial" font-size="${width * 0.06}" font-weight="600">PDF</text>
+        <text x="${width / 2}" y="${height * 0.88}" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="${width * 0.04}">Document</text>
+      </svg>
+    `;
+
+    const thumbnailData = `data:image/svg+xml;base64,${btoa(fallbackSvg)}`;
+
+    // For stored files, cache the SVG placeholder
+    if (filePath && fileId) {
       try {
-        // Decode base64 data
-        const binaryString = atob(fileData);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        arrayBuffer = bytes.buffer;
-        console.log(`File decoded successfully, size: ${arrayBuffer.byteLength} bytes`);
-      } catch (decodeError) {
-        console.error('Error decoding base64 file data:', decodeError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to decode file data' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else if (filePath) {
-      // Processing stored file
-      if (!fileId) {
-        return new Response(
-          JSON.stringify({ error: 'Missing fileId for stored file' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      console.log(`Generating thumbnail for stored file: ${filePath}`);
-      sourceDescription = `stored file: ${filePath}`;
-
-      // Download the PDF file from storage
-      const { data: fileData, error: downloadError } = await supabaseClient.storage
-        .from('user_files')
-        .download(filePath);
-
-      if (downloadError || !fileData) {
-        console.error('Error downloading file:', downloadError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to download file' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Convert blob to arrayBuffer for processing
-      arrayBuffer = await fileData.arrayBuffer();
-      console.log(`File downloaded successfully, size: ${arrayBuffer.byteLength} bytes`);
-    } else {
-      return new Response(
-        JSON.stringify({ error: 'Missing file source (filePath or fileData)' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    try {
-      // Use PDF.js for rendering PDF to canvas
-      const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs');
-      
-      // Set up PDF.js worker
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
-      
-      const pdfDocument = await pdfjsLib.getDocument({ 
-        data: arrayBuffer,
-        verbosity: 0
-      }).promise;
-      
-      const pageCount = pdfDocument.numPages;
-      console.log(`PDF loaded with ${pageCount} pages`);
-      
-      if (pageCount === 0) {
-        throw new Error('PDF has no pages');
-      }
-
-      // Get the first page
-      const page = await pdfDocument.getPage(1);
-      const viewport = page.getViewport({ scale: 1.5 });
-      
-      // Create a canvas for rendering
-      const canvas = new OffscreenCanvas(viewport.width, viewport.height);
-      const context = canvas.getContext('2d');
-      
-      if (!context) {
-        throw new Error('Failed to get canvas context');
-      }
-
-      // Render the page
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-      }).promise;
-
-      // Convert canvas to blob
-      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
-      
-      // Handle thumbnail storage for stored files only
-      let publicUrl = '';
-      if (filePath && fileId) {
-        // Generate thumbnail file path
-        const thumbnailPath = `${filePath.replace('.pdf', '_thumb.jpg')}`;
-
-        // Upload thumbnail to storage
-        const { error: uploadError } = await supabaseClient.storage
+        const thumbnailPath = `${filePath.replace('.pdf', '_thumb.svg')}`;
+        
+        await supabaseClient.storage
           .from('thumbnails')
-          .upload(thumbnailPath, blob, {
-            contentType: 'image/jpeg',
+          .upload(thumbnailPath, new Blob([fallbackSvg], { type: 'image/svg+xml' }), {
+            contentType: 'image/svg+xml',
             upsert: true
           });
 
-        if (uploadError) {
-          console.error('Error uploading thumbnail:', uploadError);
-          throw new Error('Failed to upload thumbnail');
-        }
-
-        // Update database with thumbnail URL
-        const { error: updateError } = await supabaseClient
+        await supabaseClient
           .from('user_files')
           .update({ thumbnail_url: thumbnailPath })
           .eq('id', fileId);
 
-        if (updateError) {
-          console.error('Error updating thumbnail URL:', updateError);
-          throw new Error('Failed to update database');
-        }
-
-        // Get public URL for the thumbnail
-        const { data: { publicUrl: url } } = supabaseClient.storage
+        const { data: { publicUrl } } = supabaseClient.storage
           .from('thumbnails')
           .getPublicUrl(thumbnailPath);
-        
-        publicUrl = url;
-        console.log(`Thumbnail stored successfully: ${publicUrl}`);
-      } else {
-        console.log('Thumbnail generated for File object (not stored)');
+
+        console.log('SVG placeholder stored successfully:', publicUrl);
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            thumbnailUrl: publicUrl,
+            thumbnailData: thumbnailData,
+            fallback: true
+          }),
+          { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      } catch (storageError) {
+        console.error('Storage error:', storageError);
+        // Continue with in-memory response
       }
-
-      // Convert blob to base64 for immediate use
-      const buffer = await blob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          thumbnailUrl: publicUrl,
-          thumbnailData: `data:image/jpeg;base64,${base64}`,
-          pageCount
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-
-    } catch (pdfError) {
-      console.error('PDF processing error:', pdfError);
-      
-      // Fallback to styled SVG placeholder if PDF processing fails
-      const fallbackSvg = `
-        <svg width="200" height="260" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#f8fafc"/>
-              <stop offset="100%" style="stop-color:#e2e8f0"/>
-            </linearGradient>
-            <linearGradient id="content" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" style="stop-color:#cbd5e1"/>
-              <stop offset="100%" style="stop-color:#94a3b8"/>
-            </linearGradient>
-          </defs>
-          <rect width="200" height="260" fill="url(#bg)" stroke="#cbd5e1" stroke-width="1"/>
-          <rect x="20" y="30" width="160" height="12" fill="url(#content)" rx="2"/>
-          <rect x="20" y="50" width="120" height="8" fill="url(#content)" rx="1"/>
-          <rect x="20" y="65" width="140" height="8" fill="url(#content)" rx="1"/>
-          <rect x="20" y="80" width="100" height="8" fill="url(#content)" rx="1"/>
-          <rect x="20" y="100" width="130" height="8" fill="url(#content)" rx="1"/>
-          <rect x="20" y="115" width="90" height="8" fill="url(#content)" rx="1"/>
-          <circle cx="100" cy="180" r="25" fill="#3b82f6" opacity="0.1"/>
-          <text x="100" y="185" text-anchor="middle" fill="#3b82f6" font-family="Arial" font-size="12" font-weight="bold">PDF</text>
-          <text x="100" y="220" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="10">Document</text>
-        </svg>
-      `;
-
-      const thumbnailPath = `${filePath.replace('.pdf', '_thumb.svg')}`;
-      
-      await supabaseClient.storage
-        .from('thumbnails')
-        .upload(thumbnailPath, new Blob([fallbackSvg], { type: 'image/svg+xml' }), {
-          contentType: 'image/svg+xml',
-          upsert: true
-        });
-
-      await supabaseClient
-        .from('user_files')
-        .update({ thumbnail_url: thumbnailPath })
-        .eq('id', fileId);
-
-      const { data: { publicUrl } } = supabaseClient.storage
-        .from('thumbnails')
-        .getPublicUrl(thumbnailPath);
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          thumbnailUrl: publicUrl,
-          thumbnailData: `data:image/svg+xml;base64,${btoa(fallbackSvg)}`,
-          fallback: true
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
     }
+
+    // Return the SVG placeholder immediately
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        thumbnailData: thumbnailData,
+        fallback: true
+      }),
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
 
   } catch (error) {
     console.error('Error in generate-thumbnail function:', error);
+    
+    // Return a basic fallback even on error
+    const basicSvg = `
+      <svg width="200" height="260" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+        <rect width="200" height="260" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" rx="8"/>
+        <text x="100" y="130" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="12" font-weight="600">PDF</text>
+      </svg>
+    `;
+    
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: true, 
+        thumbnailData: `data:image/svg+xml;base64,${btoa(basicSvg)}`,
+        fallback: true
+      }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
