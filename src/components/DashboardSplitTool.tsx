@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Scissors, Upload, FileText, Download, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import PDFPageGrid from '@/components/PDFPageGrid';
+import UnifiedPDFThumbnail from '@/components/UnifiedPDFThumbnail';
 import { splitPDF, SplitConfig, SplitResult, validatePageRanges } from '@/utils/pdfSplitUtils';
 import { downloadBlob } from '@/utils/pdfUtils';
 

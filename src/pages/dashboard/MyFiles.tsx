@@ -7,7 +7,7 @@ import { getUserFiles, downloadUserFile, deleteUserFile, type UserFile } from '@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import PDFThumbnail from '@/components/PDFThumbnail';
+import UnifiedPDFThumbnail from '@/components/UnifiedPDFThumbnail';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -196,8 +196,8 @@ export default function MyFiles() {
           {files.map((file) => (
             <div key={file.id} className="group relative">
               <div className="space-y-2">
-                <PDFThumbnail 
-                  filePath={file.file_path}
+                <UnifiedPDFThumbnail 
+                  source={file.file_path}
                   filename={file.filename}
                   fileId={file.id}
                   size="large"
@@ -266,8 +266,8 @@ export default function MyFiles() {
           {files.map((file) => (
             <div key={file.id} className="group p-3 rounded-lg hover:bg-muted/30 transition-colors border border-transparent hover:border-border/50">
               <div className="flex items-center gap-4">
-                <PDFThumbnail 
-                  filePath={file.file_path}
+                <UnifiedPDFThumbnail 
+                  source={file.file_path}
                   filename={file.filename}
                   fileId={file.id}
                   size="small"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, RefreshCw } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
-import { generateFileThumbnail } from '@/utils/fileThumbnailGenerator';
+import { generateThumbnail } from '@/utils/unifiedThumbnailGenerator';
 
 interface PDFPageGridProps {
   file: File;
@@ -129,9 +129,10 @@ export default function PDFPageGrid({
     console.log(`PDFPageGrid: Starting thumbnail generation for page ${pageNumber}`);
     
     try {
-      const thumbnail = await generateFileThumbnail(file, pageNumber);
-      console.log(`PDFPageGrid: Thumbnail generation ${thumbnail ? 'succeeded' : 'failed'} for page ${pageNumber}`);
-      return thumbnail;
+      const result = await generateThumbnail(file, { width: 160, height: 208 });
+      const thumbnailData = result.success ? result.data : null;
+      console.log(`PDFPageGrid: Thumbnail generation ${thumbnailData ? 'succeeded' : 'failed'} for page ${pageNumber}`);
+      return thumbnailData;
     } catch (err) {
       console.error(`PDFPageGrid: Error generating thumbnail for page ${pageNumber}:`, err);
       return null;
