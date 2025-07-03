@@ -1,11 +1,10 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Disable the worker by setting it to an empty string
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+// Use the non-minified version which exists and doesn't have CORS issues
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.js';
 
-console.log('PDF.js initialized without worker - using main thread');
-console.log('PDF.js version:', pdfjsLib.version);
+console.log('PDF.js initialized with version:', pdfjsLib.version);
 
 // Simple function that always returns true since we're not using a worker
 export const ensureWorkerReady = async (): Promise<boolean> => {
