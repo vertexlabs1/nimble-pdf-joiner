@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FileText, RefreshCw } from 'lucide-react';
-import { generateThumbnail, ThumbnailResult } from '@/utils/unifiedThumbnailGenerator';
+import { FileText } from 'lucide-react';
 
 interface UnifiedPDFThumbnailProps {
   source: File | string; // File object or stored file path
@@ -23,11 +22,10 @@ export default function UnifiedPDFThumbnail({
   showRetry = true,
   onClick
 }: UnifiedPDFThumbnailProps) {
-  const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState(false);
   const [inView, setInView] = useState(!lazy);
-  const [retryCount, setRetryCount] = useState(0);
   const elementRef = useRef<HTMLDivElement>(null);
 
   // Get display filename
@@ -58,50 +56,42 @@ export default function UnifiedPDFThumbnail({
     }
   }, [lazy]);
 
-  // Generate thumbnail when in view
+  // Create PDF URL when in view
   useEffect(() => {
-    if (inView) {
-      generateThumbnailAsync();
+    if (inView && !pdfUrl) {
+      createPdfUrl();
     }
-  }, [source, size, inView, retryCount]);
+    
+    // Cleanup object URL when component unmounts
+    return () => {
+      if (pdfUrl && source instanceof File) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [source, inView]);
 
-  const generateThumbnailAsync = async () => {
+  const createPdfUrl = async () => {
     if (!inView) return;
     
     setLoading(true);
     setError(false);
     
     try {
-      const result: ThumbnailResult = await generateThumbnail(
-        source,
-        { 
-          width: dimensions.width, 
-          height: dimensions.height,
-          quality: 0.8,
-          pageNumber: 1 // Always use first page for file thumbnails
-        },
-        fileId
-      );
-      
-      if (result.success && result.data) {
-        setThumbnail(result.data);
+      if (source instanceof File) {
+        // Create object URL for File objects
+        const url = URL.createObjectURL(source);
+        setPdfUrl(url);
       } else {
-        setError(true);
-        // Still set placeholder if we got one
-        if (result.data) {
-          setThumbnail(result.data);
-        }
+        // For stored files, we need to get the public URL from Supabase
+        // This assumes the source is already a public URL or file path
+        setPdfUrl(source);
       }
     } catch (err) {
-      console.error('Error generating thumbnail:', err);
+      console.error('Error creating PDF URL:', err);
       setError(true);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
   };
 
   const containerClasses = `
@@ -141,7 +131,7 @@ export default function UnifiedPDFThumbnail({
     );
   }
 
-  if (error && !thumbnail) {
+  if (error || !pdfUrl) {
     return (
       <div 
         ref={elementRef} 
@@ -160,19 +150,6 @@ export default function UnifiedPDFThumbnail({
               <span className="text-xs text-muted-foreground/70 font-medium block mb-1">
                 {size === 'medium' ? 'PDF' : 'PDF Document'}
               </span>
-              {showRetry && size === 'large' && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRetry();
-                  }}
-                  className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors flex items-center gap-1 mx-auto"
-                  title="Retry thumbnail generation"
-                >
-                  <RefreshCw className="h-3 w-3" />
-                  Retry
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -187,37 +164,21 @@ export default function UnifiedPDFThumbnail({
       onClick={onClick}
       title={displayName}
     >
-      {thumbnail ? (
-        <img 
-          src={thumbnail} 
-          alt={`Thumbnail of ${displayName}`}
-          className="w-full h-full object-cover"
-          loading="lazy"
+      <div className="relative w-full h-full">
+        <iframe
+          src={`${pdfUrl}#page=1&view=FitH&toolbar=0&navpanes=0&statusbar=0&scrollbar=0`}
+          className="w-full h-full pointer-events-none border-0"
+          style={{
+            transform: 'scale(0.5)',
+            transformOrigin: 'top left',
+            width: '200%',
+            height: '200%'
+          }}
+          title={`Thumbnail of ${displayName}`}
         />
-      ) : (
-        <div className="w-full h-full bg-muted/50 flex items-center justify-center">
-          <FileText className={`${
-            size === 'small' ? 'h-4 w-4' : 
-            size === 'medium' ? 'h-6 w-6' : 
-            'h-8 w-8'
-          } text-muted-foreground/50`} />
-        </div>
-      )}
-      
-      {error && size === 'large' && showRetry && (
-        <div className="absolute top-2 right-2">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRetry();
-            }}
-            className="p-1 bg-background/80 rounded-full shadow-sm hover:bg-background transition-colors"
-            title="Retry thumbnail generation"
-          >
-            <RefreshCw className="h-3 w-3 text-muted-foreground" />
-          </button>
-        </div>
-      )}
+        {/* Overlay to prevent interaction with iframe */}
+        <div className="absolute inset-0 bg-transparent pointer-events-none" />
+      </div>
     </div>
   );
 }

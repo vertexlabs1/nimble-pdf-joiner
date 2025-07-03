@@ -14,13 +14,37 @@ import { Separator } from '@/components/ui/separator';
 import { Link } from 'react-router-dom';
 import { FileText, Shield, Zap, Lock, Eye, Download } from 'lucide-react';
 import { PDFFileWithPages } from '@/types/pdf';
-import { getBasicFileInfo } from '@/utils/pdfPageUtils';
+import { PDFDocument } from 'pdf-lib';
 
 const Index = () => {
   const [files, setFiles] = useState<File[]>([]);
   const [enhancedFiles, setEnhancedFiles] = useState<PDFFileWithPages[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Simple function to get basic PDF info using pdf-lib
+  const getBasicFileInfo = async (file: File): Promise<PDFFileWithPages> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const pageCount = pdfDoc.getPageCount();
+      
+      return {
+        originalFile: file,
+        pageCount,
+        pages: [],
+        isModified: false,
+      };
+    } catch (error) {
+      console.error('Error getting basic info for:', file.name, error);
+      return {
+        originalFile: file,
+        pageCount: 1,
+        pages: [],
+        isModified: false,
+      };
+    }
+  };
 
   // Fast basic processing - only get page counts, no thumbnails
   useEffect(() => {

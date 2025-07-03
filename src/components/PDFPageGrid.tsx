@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, RefreshCw } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
-import { generateThumbnail } from '@/utils/unifiedThumbnailGenerator';
-import PDFWorkerDebug from './PDFWorkerDebug';
 
 interface PDFPageGridProps {
   file: File;
@@ -11,30 +9,29 @@ interface PDFPageGridProps {
   maxPages?: number;
 }
 
-interface PageThumbnail {
-  pageNumber: number;
-  thumbnail: string | null;
-  loading: boolean;
-  error: boolean;
-}
-
 export default function PDFPageGrid({ 
   file, 
   onLoad, 
   showPageNumbers = false,
   maxPages = 20
 }: PDFPageGridProps) {
-  const [pages, setPages] = useState<PageThumbnail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(0);
-  const [retryCount, setRetryCount] = useState(0);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (file) {
       loadPDFInfo();
     }
-  }, [file, retryCount]);
+    
+    // Cleanup object URL when component unmounts or file changes
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [file]);
 
   const loadPDFInfo = async () => {
     setLoading(true);
@@ -49,103 +46,16 @@ export default function PDFPageGrid({
       setTotalPages(pageCount);
       onLoad?.(pageCount);
 
-      // Initialize page thumbnails array
-      const pagesToShow = Math.min(pageCount, maxPages);
-      const initialPages: PageThumbnail[] = Array.from({ length: pagesToShow }, (_, i) => ({
-        pageNumber: i + 1,
-        thumbnail: null,
-        loading: true,
-        error: false
-      }));
+      // Create object URL for the PDF file
+      const url = URL.createObjectURL(file);
+      setPdfUrl(url);
       
-      setPages(initialPages);
       setLoading(false);
-
-      // Start generating thumbnails progressively
-      generateThumbnailsProgressively(initialPages);
-
     } catch (err) {
       console.error('Error loading PDF info:', err);
       setError('Failed to load PDF. The file may be corrupted or encrypted.');
       setLoading(false);
     }
-  };
-
-  const generateThumbnailsProgressively = async (pageList: PageThumbnail[]) => {
-    const batchSize = 2; // Reduce concurrent processing to avoid overwhelming worker
-    
-    for (let i = 0; i < pageList.length; i += batchSize) {
-      const batch = pageList.slice(i, i + batchSize);
-      
-      // Process batch sequentially instead of in parallel
-      for (let j = 0; j < batch.length; j++) {
-        const pageIndex = i + j;
-        if (pageIndex >= pageList.length) break;
-        
-        const page = batch[j];
-        
-        try {
-          const thumbnail = await generateSingleThumbnail(page.pageNumber);
-          
-          setPages(prevPages => {
-            const newPages = [...prevPages];
-            if (pageIndex < newPages.length) {
-              newPages[pageIndex] = {
-                ...newPages[pageIndex],
-                thumbnail: thumbnail,
-                loading: false,
-                error: !thumbnail
-              };
-            }
-            return newPages;
-          });
-        } catch (err) {
-          console.error(`Error generating thumbnail for page ${page.pageNumber}:`, err);
-          setPages(prevPages => {
-            const newPages = [...prevPages];
-            if (pageIndex < newPages.length) {
-              newPages[pageIndex] = {
-                ...newPages[pageIndex],
-                thumbnail: null,
-                loading: false,
-                error: true
-              };
-            }
-            return newPages;
-          });
-        }
-        
-        // Small delay between individual thumbnails
-        await new Promise(resolve => setTimeout(resolve, 50));
-      }
-      
-      // Longer delay between batches
-      if (i + batchSize < pageList.length) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    }
-  };
-
-  const generateSingleThumbnail = async (pageNumber: number): Promise<string | null> => {
-    console.log(`PDFPageGrid: Starting thumbnail generation for page ${pageNumber}`);
-    
-    try {
-      const result = await generateThumbnail(file, { 
-        width: 160, 
-        height: 208, 
-        pageNumber: pageNumber 
-      });
-      const thumbnailData = result.success ? result.data : null;
-      console.log(`PDFPageGrid: Thumbnail generation ${thumbnailData ? 'succeeded' : 'failed'} for page ${pageNumber}`);
-      return thumbnailData;
-    } catch (err) {
-      console.error(`PDFPageGrid: Error generating thumbnail for page ${pageNumber}:`, err);
-      return null;
-    }
-  };
-
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
   };
 
   if (loading) {
@@ -173,9 +83,10 @@ export default function PDFPageGrid({
     );
   }
 
+  const pagesToShow = Math.min(totalPages, maxPages);
+
   return (
     <div className="space-y-4">
-      <PDFWorkerDebug />
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {totalPages > maxPages ? 
@@ -183,45 +94,45 @@ export default function PDFPageGrid({
             `${totalPages} pages`
           }
         </div>
-        {pages.some(p => p.error) && (
-          <button
-            onClick={handleRetry}
-            className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Retry Thumbnails
-          </button>
-        )}
       </div>
       
       <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-        {pages.map((page, index) => (
-          <div key={index} className="space-y-2">
-            <div className="aspect-[3/4] bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-              {page.loading ? (
-                <div className="w-full h-full bg-muted/50 flex items-center justify-center animate-pulse">
-                  <FileText className="h-6 w-6 text-muted-foreground/50" />
-                </div>
-              ) : page.thumbnail ? (
-                <img 
-                  src={page.thumbnail} 
-                  alt={`Page ${page.pageNumber}`}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-muted flex flex-col items-center justify-center">
-                  <FileText className="h-6 w-6 text-muted-foreground mb-1" />
-                  <span className="text-xs text-muted-foreground">{page.pageNumber}</span>
+        {Array.from({ length: pagesToShow }, (_, index) => {
+          const pageNumber = index + 1;
+          return (
+            <div key={index} className="space-y-2">
+              <div className="relative aspect-[3/4] bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                {pdfUrl ? (
+                  <>
+                    <iframe
+                      src={`${pdfUrl}#page=${pageNumber}&view=FitH&toolbar=0&navpanes=0&statusbar=0&scrollbar=0`}
+                      className="w-full h-full pointer-events-none border-0"
+                      style={{
+                        transform: 'scale(0.5)',
+                        transformOrigin: 'top left',
+                        width: '200%',
+                        height: '200%'
+                      }}
+                      title={`Page ${pageNumber}`}
+                    />
+                    {/* Overlay to prevent interaction with iframe */}
+                    <div className="absolute inset-0 bg-transparent pointer-events-none" />
+                  </>
+                ) : (
+                  <div className="w-full h-full bg-muted flex flex-col items-center justify-center">
+                    <FileText className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">{pageNumber}</span>
+                  </div>
+                )}
+              </div>
+              {showPageNumbers && (
+                <div className="text-xs text-center text-muted-foreground">
+                  Page {pageNumber}
                 </div>
               )}
             </div>
-            {showPageNumbers && (
-              <div className="text-xs text-center text-muted-foreground">
-                Page {page.pageNumber}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
         
         {totalPages > maxPages && (
           <div className="aspect-[3/4] bg-muted/50 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center">
