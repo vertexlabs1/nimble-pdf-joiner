@@ -6,18 +6,20 @@ import { copyFileSync, existsSync } from "fs";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Copy PDF.js worker during build
+  // Copy PDF.js worker during build - always overwrite to ensure fresh copy
   const copyPDFWorker = () => {
     const workerSource = path.resolve(__dirname, 'node_modules/pdfjs-dist/build/pdf.worker.min.js');
     const workerDest = path.resolve(__dirname, 'public/pdf.worker.min.js');
     
-    if (existsSync(workerSource) && !existsSync(workerDest)) {
+    if (existsSync(workerSource)) {
       try {
         copyFileSync(workerSource, workerDest);
         console.log('PDF.js worker copied successfully');
       } catch (error) {
         console.warn('Failed to copy PDF.js worker:', error);
       }
+    } else {
+      console.warn('PDF.js worker source not found:', workerSource);
     }
   };
 

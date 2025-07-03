@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText, RefreshCw } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { generateThumbnail } from '@/utils/unifiedThumbnailGenerator';
+import PDFWorkerDebug from './PDFWorkerDebug';
 
 interface PDFPageGridProps {
   file: File;
@@ -174,6 +175,7 @@ export default function PDFPageGrid({
 
   return (
     <div className="space-y-4">
+      <PDFWorkerDebug />
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
           {totalPages > maxPages ? 
