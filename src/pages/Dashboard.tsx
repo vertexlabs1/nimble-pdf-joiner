@@ -7,6 +7,7 @@ import MyFiles from './dashboard/MyFiles';
 import ToolPage from './dashboard/ToolPage';
 import AdminPanel from './dashboard/AdminPanel';
 import { DashboardMergeTool } from '@/components/DashboardMergeTool';
+import { DashboardSplitTool } from '@/components/DashboardSplitTool';
 import { Scissors, Shield, RefreshCw, Stamp, Zap, Plus } from 'lucide-react';
 
 export default function Dashboard() {
@@ -16,22 +17,7 @@ export default function Dashboard() {
         <Route path="/" element={<DashboardHome />} />
         <Route path="/files" element={<MyFiles />} />
         <Route path="/merge" element={<DashboardMergeTool />} />
-        <Route 
-          path="/split" 
-          element={
-            <ToolPage 
-              title="Split PDFs"
-              description="Split large PDF files into smaller documents"
-              icon={Scissors}
-              features={[
-                "Split by page range",
-                "Extract specific pages",
-                "Split by file size",
-                "Bulk splitting options"
-              ]}
-            />
-          } 
-        />
+        <Route path="/split" element={<DashboardSplitTool />} />
         <Route 
           path="/redact" 
           element={
