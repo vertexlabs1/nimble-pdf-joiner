@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, RefreshCw } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
+import { generateFileThumbnail } from '@/utils/fileThumbnailGenerator';
 
 interface PDFPageGridProps {
   file: File;
@@ -115,50 +116,14 @@ export default function PDFPageGrid({
   };
 
   const generateSingleThumbnail = async (pageNumber: number): Promise<string | null> => {
+    console.log(`PDFPageGrid: Starting thumbnail generation for page ${pageNumber}`);
+    
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      
-      // Use PDF.js for thumbnail generation with timeout
-      const pdfjsLib = await import('pdfjs-dist');
-      
-      // Set worker if not already set
-      if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-      }
-
-      const loadingTask = pdfjsLib.getDocument({ 
-        data: arrayBuffer,
-        verbosity: 0 
-      });
-      
-      const pdf = await Promise.race([
-        loadingTask.promise,
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('PDF loading timeout')), 5000)
-        )
-      ]) as any;
-      
-      const page = await pdf.getPage(pageNumber);
-      const scale = 0.4; // Smaller scale for faster generation
-      const viewport = page.getViewport({ scale });
-
-      const canvas = document.createElement('canvas');
-      const context = canvas.getContext('2d');
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-
-      if (!context) {
-        throw new Error('Could not get canvas context');
-      }
-
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-      }).promise;
-
-      return canvas.toDataURL('image/jpeg', 0.7); // Lower quality for faster generation
+      const thumbnail = await generateFileThumbnail(file, pageNumber);
+      console.log(`PDFPageGrid: Thumbnail generation ${thumbnail ? 'succeeded' : 'failed'} for page ${pageNumber}`);
+      return thumbnail;
     } catch (err) {
-      console.error(`Error generating thumbnail for page ${pageNumber}:`, err);
+      console.error(`PDFPageGrid: Error generating thumbnail for page ${pageNumber}:`, err);
       return null;
     }
   };
