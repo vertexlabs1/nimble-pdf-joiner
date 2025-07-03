@@ -147,9 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
     
-    if (error) {
-      setLoading(false);
-    }
+    // Always reset loading state after signup attempt
+    setLoading(false);
     
     return { error };
   };

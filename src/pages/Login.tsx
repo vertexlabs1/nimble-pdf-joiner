@@ -7,12 +7,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Lock, FileText } from 'lucide-react';
 import loginIllustration from '@/assets/login-illustration.jpg';
+import EmailVerificationSuccess from '@/components/EmailVerificationSuccess';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showEmailVerification, setShowEmailVerification] = useState(false);
   const { signIn, signUp, user, isAdmin, loading, adminLoading } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
@@ -67,14 +69,8 @@ export default function Login() {
           variant: "destructive",
         });
       } else if (isSignUp) {
-        toast({
-          title: "Account Created",
-          description: "Please check your email to verify your account.",
-          variant: "default",
-        });
-        setEmail('');
-        setPassword('');
-        setIsSignUp(false);
+        // Show email verification screen instead of toast
+        setShowEmailVerification(true);
       }
     } catch (error) {
       toast({
@@ -86,6 +82,44 @@ export default function Login() {
       setIsLoading(false);
     }
   };
+
+  const handleBackToLogin = () => {
+    setShowEmailVerification(false);
+    setEmail('');
+    setPassword('');
+    setIsSignUp(false);
+  };
+
+  const handleResendEmail = async () => {
+    setIsLoading(true);
+    const { error } = await signUp(email, password);
+    setIsLoading(false);
+    
+    if (!error) {
+      toast({
+        title: "Email Resent",
+        description: "We've sent another verification email to your inbox.",
+        variant: "default",
+      });
+    } else {
+      toast({
+        title: "Failed to Resend",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Show email verification screen if signup was successful
+  if (showEmailVerification) {
+    return (
+      <EmailVerificationSuccess 
+        email={email}
+        onBack={handleBackToLogin}
+        onResendEmail={handleResendEmail}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,14 +163,14 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <label htmlFor="password" className="text-sm font-medium text-foreground">
-                    Password
+                    {isSignUp ? 'Set Password' : 'Password'}
                   </label>
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    placeholder={isSignUp ? "Create a password" : "Enter your password"}
                     required
                     className="h-12 text-base transition-all duration-200"
                   />
