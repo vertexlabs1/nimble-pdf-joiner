@@ -12,7 +12,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, user, isAdmin } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const { signIn, signUp, user, isAdmin, loading } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
 
@@ -27,6 +28,15 @@ export default function Login() {
     }
   }, [location.state, toast]);
 
+  // Show loading while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   // Redirect if already authenticated and admin
   if (user && isAdmin) {
     return <Navigate to="/dashboard" replace />;
@@ -37,18 +47,38 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
+      const { error } = isSignUp ? await signUp(email, password) : await signIn(email, password);
 
       if (error) {
+        let errorMessage = error.message;
+        
+        // Provide better error messages
+        if (error.message?.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (error.message?.includes('User already registered')) {
+          errorMessage = 'An account with this email already exists. Try signing in instead.';
+        } else if (error.message?.includes('Signup not allowed')) {
+          errorMessage = 'Account registration is currently disabled.';
+        }
+
         toast({
-          title: "Login Failed",
-          description: error.message || "Invalid email or password",
+          title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
+          description: errorMessage,
           variant: "destructive",
         });
+      } else if (isSignUp) {
+        toast({
+          title: "Account Created",
+          description: "Please check your email to verify your account.",
+          variant: "default",
+        });
+        setEmail('');
+        setPassword('');
+        setIsSignUp(false);
       }
     } catch (error) {
       toast({
-        title: "Login Failed",
+        title: isSignUp ? "Sign Up Failed" : "Sign In Failed",
         description: "An unexpected error occurred",
         variant: "destructive",
       });
@@ -72,10 +102,10 @@ export default function Login() {
                 </div>
               </div>
               <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                Pro Dashboard
+                {isSignUp ? 'Create Account' : 'Pro Dashboard'}
               </h1>
               <p className="text-lg text-muted-foreground">
-                Access your professional PDF management tools
+                {isSignUp ? 'Join to access professional PDF management tools' : 'Access your professional PDF management tools'}
               </p>
             </div>
 
@@ -123,19 +153,19 @@ export default function Login() {
                     <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                     Signing in...
                   </div>
-                ) : (
-                  'Sign in'
-                )}
-              </Button>
+                  ) : (
+                    isSignUp ? 'Create Account' : 'Sign in'
+                  )}
+                </Button>
 
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-                onClick={() => {/* TODO: Implement sign up */}}
-              >
-                Sign up
-              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12 text-base font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                  onClick={() => setIsSignUp(!isSignUp)}
+                >
+                  {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+                </Button>
             </form>
 
             {/* Footer */}
