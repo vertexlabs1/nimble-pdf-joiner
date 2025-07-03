@@ -1,15 +1,11 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-// CDN worker URLs with correct paths for v5.3.31 and fallbacks
+// CDN worker URLs with correct paths for v4.9.155
 const CDN_WORKERS = [
-  // v5.3.31 uses /legacy/build/ path
-  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.js`,
-  `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/legacy/build/pdf.worker.min.js`,
-  // Fallback to older working version
-  `https://unpkg.com/pdfjs-dist@4.0.379/build/pdf.worker.min.js`,
-  `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js`,
-  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`
+  `https://unpkg.com/pdfjs-dist@4.9.155/build/pdf.worker.min.js`,
+  `https://cdn.jsdelivr.net/npm/pdfjs-dist@4.9.155/build/pdf.worker.min.js`,
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.js`
 ];
 
 let workerInitialized = false;
