@@ -37,12 +37,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     setAdminLoading(true);
     
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.warn('Admin check timeout - assuming non-admin');
+      setIsAdmin(false);
+      setAdminChecked(true);
+      setAdminLoading(false);
+    }, 5000);
+    
     try {
       const { data, error } = await supabase
         .from('admins')
         .select('email')
         .eq('email', userEmail)
         .maybeSingle();
+      
+      clearTimeout(timeoutId);
       
       if (error) {
         console.error('Error checking admin status:', error);
@@ -52,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       setAdminChecked(true);
     } catch (error) {
+      clearTimeout(timeoutId);
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
       setAdminChecked(true);
@@ -74,15 +85,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user?.email) {
           // Reset admin check for new user
           setAdminChecked(false);
-          setTimeout(() => {
-            if (mounted && session?.user?.email) {
-              checkAdminStatus(session.user.email);
-            }
-          }, 0);
+          checkAdminStatus(session.user.email);
         } else {
           // Clear admin state for logged out users
           setIsAdmin(false);
-          setAdminChecked(true); // Set to true to stop loading
+          setAdminChecked(true);
+          setAdminLoading(false);
         }
         
         // Always set loading to false after auth state change
