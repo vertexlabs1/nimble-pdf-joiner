@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FileText } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PDFPageGridProps {
   file: File;
@@ -16,6 +17,7 @@ export default function PDFPageGrid({
   showPageNumbers = false,
   maxPages = 20
 }: PDFPageGridProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(0);
@@ -42,8 +44,10 @@ export default function PDFPageGrid({
       onLoad?.(pageCount);
       setLoading(false);
       
-      // Start generating thumbnails for visible pages
-      generateThumbnailsForPages(Math.min(pageCount, maxPages));
+      // Only generate thumbnails if user is authenticated
+      if (user) {
+        generateThumbnailsForPages(Math.min(pageCount, maxPages));
+      }
     } catch (err) {
       console.error('Error loading PDF info:', err);
       setError('Failed to load PDF. The file may be corrupted or encrypted.');
@@ -52,12 +56,13 @@ export default function PDFPageGrid({
   };
 
   const generateThumbnailsForPages = async (pageCount: number) => {
+    // Check authentication before proceeding
+    if (!user) return;
+    
     // Upload file to temporary storage to get a server-accessible URL
     let tempFilePath: string | null = null;
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
 
       // Upload to temp storage
       const timestamp = Date.now();

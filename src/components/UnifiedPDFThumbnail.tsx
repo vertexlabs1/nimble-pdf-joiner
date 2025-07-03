@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UnifiedPDFThumbnailProps {
   source: File | string; // File object or stored file path
@@ -23,6 +24,7 @@ export default function UnifiedPDFThumbnail({
   showRetry = true,
   onClick
 }: UnifiedPDFThumbnailProps) {
+  const { user } = useAuth();
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState(false);
@@ -57,15 +59,15 @@ export default function UnifiedPDFThumbnail({
     }
   }, [lazy]);
 
-  // Generate thumbnail when in view
+  // Generate thumbnail when in view and user is authenticated
   useEffect(() => {
-    if (inView && !thumbnailUrl) {
+    if (inView && !thumbnailUrl && user) {
       generateThumbnail();
     }
-  }, [source, inView]);
+  }, [source, inView, user]);
 
   const generateThumbnail = async () => {
-    if (!inView) return;
+    if (!inView || !user) return;
     
     setLoading(true);
     setError(false);
@@ -75,11 +77,6 @@ export default function UnifiedPDFThumbnail({
       
       if (source instanceof File) {
         // Upload file to temporary storage for server access
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setError(true);
-          return;
-        }
 
         const timestamp = Date.now();
         tempFilePath = `temp/${user.id}/${timestamp}_${source.name}`;
