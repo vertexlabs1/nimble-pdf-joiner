@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [adminChecked]);
+  }, []);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
