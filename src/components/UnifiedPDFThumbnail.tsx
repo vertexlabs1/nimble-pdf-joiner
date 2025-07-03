@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FileText } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UnifiedPDFThumbnailProps {
   source: File | string; // File object or stored file path
@@ -22,7 +23,7 @@ export default function UnifiedPDFThumbnail({
   showRetry = true,
   onClick
 }: UnifiedPDFThumbnailProps) {
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(!lazy);
   const [error, setError] = useState(false);
   const [inView, setInView] = useState(!lazy);
@@ -56,38 +57,61 @@ export default function UnifiedPDFThumbnail({
     }
   }, [lazy]);
 
-  // Create PDF URL when in view
+  // Generate thumbnail when in view
   useEffect(() => {
-    if (inView && !pdfUrl) {
-      createPdfUrl();
+    if (inView && !thumbnailUrl) {
+      generateThumbnail();
     }
-    
-    // Cleanup object URL when component unmounts
-    return () => {
-      if (pdfUrl && source instanceof File) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
   }, [source, inView]);
 
-  const createPdfUrl = async () => {
+  const generateThumbnail = async () => {
     if (!inView) return;
     
     setLoading(true);
     setError(false);
     
     try {
+      let pdfUrl: string;
+      
       if (source instanceof File) {
         // Create object URL for File objects
-        const url = URL.createObjectURL(source);
-        setPdfUrl(url);
+        pdfUrl = URL.createObjectURL(source);
       } else {
-        // For stored files, we need to get the public URL from Supabase
-        // This assumes the source is already a public URL or file path
-        setPdfUrl(source);
+        // For stored files, use the file path
+        pdfUrl = source;
+      }
+
+      const { data, error: funcError } = await supabase.functions.invoke('generate-thumbnail', {
+        body: {
+          pdfUrl: source instanceof File ? pdfUrl : undefined,
+          filePath: typeof source === 'string' ? source : undefined,
+          fileId,
+          filename: displayName,
+          width: dimensions.width,
+          height: dimensions.height
+        }
+      });
+
+      // Clean up object URL if we created one
+      if (source instanceof File) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+
+      if (funcError) {
+        console.error('Error generating thumbnail:', funcError);
+        setError(true);
+        return;
+      }
+
+      if (data?.thumbnailData) {
+        setThumbnailUrl(data.thumbnailData);
+      } else if (data?.thumbnailUrl) {
+        setThumbnailUrl(data.thumbnailUrl);
+      } else {
+        setError(true);
       }
     } catch (err) {
-      console.error('Error creating PDF URL:', err);
+      console.error('Error generating thumbnail:', err);
       setError(true);
     } finally {
       setLoading(false);
@@ -131,7 +155,7 @@ export default function UnifiedPDFThumbnail({
     );
   }
 
-  if (error || !pdfUrl) {
+  if (error || !thumbnailUrl) {
     return (
       <div 
         ref={elementRef} 
@@ -164,21 +188,11 @@ export default function UnifiedPDFThumbnail({
       onClick={onClick}
       title={displayName}
     >
-      <div className="relative w-full h-full">
-        <iframe
-          src={`${pdfUrl}#page=1&view=FitH&toolbar=0&navpanes=0&statusbar=0&scrollbar=0`}
-          className="w-full h-full pointer-events-none border-0"
-          style={{
-            transform: 'scale(0.5)',
-            transformOrigin: 'top left',
-            width: '200%',
-            height: '200%'
-          }}
-          title={`Thumbnail of ${displayName}`}
-        />
-        {/* Overlay to prevent interaction with iframe */}
-        <div className="absolute inset-0 bg-transparent pointer-events-none" />
-      </div>
+      <img 
+        src={thumbnailUrl} 
+        alt={`Thumbnail of ${displayName}`}
+        className="w-full h-full object-cover rounded-lg"
+      />
     </div>
   );
 }

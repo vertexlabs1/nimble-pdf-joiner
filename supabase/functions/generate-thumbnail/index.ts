@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
+import puppeteer from "https://deno.land/x/puppeteer@16.2.0/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,105 +19,159 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { filePath, fileId, fileData, filename, width = 200, height = 260, quality = 0.8 } = await req.json();
+    const { pdfUrl, filePath, fileId, filename, pageNumber = 1, width = 300, height = 400, quality = 0.8 } = await req.json();
     
-    console.log('Thumbnail generation request:', { filePath, fileId, filename, width, height });
+    console.log('PDF thumbnail generation request:', { pdfUrl, filePath, fileId, filename, pageNumber, width, height });
 
-    // Generate a styled SVG placeholder immediately
-    const fallbackSvg = `
-      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="bg-${width}-${height}" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" style="stop-color:#f8fafc"/>
-            <stop offset="100%" style="stop-color:#e2e8f0"/>
-          </linearGradient>
-          <linearGradient id="content-${width}-${height}" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:#cbd5e1"/>
-            <stop offset="100%" style="stop-color:#94a3b8"/>
-          </linearGradient>
-        </defs>
-        <rect width="${width}" height="${height}" fill="url(#bg-${width}-${height})" stroke="#cbd5e1" stroke-width="1" rx="8"/>
-        <rect x="${width * 0.1}" y="${height * 0.15}" width="${width * 0.8}" height="${height * 0.08}" fill="url(#content-${width}-${height})" rx="2"/>
-        <rect x="${width * 0.1}" y="${height * 0.28}" width="${width * 0.6}" height="${height * 0.06}" fill="url(#content-${width}-${height})" opacity="0.7" rx="1"/>
-        <rect x="${width * 0.1}" y="${height * 0.4}" width="${width * 0.7}" height="${height * 0.06}" fill="url(#content-${width}-${height})" opacity="0.7" rx="1"/>
-        <rect x="${width * 0.1}" y="${height * 0.52}" width="${width * 0.5}" height="${height * 0.06}" fill="url(#content-${width}-${height})" opacity="0.7" rx="1"/>
-        <circle cx="${width / 2}" cy="${height * 0.75}" r="${width * 0.08}" fill="#3b82f6" opacity="0.2"/>
-        <text x="${width / 2}" y="${height * 0.78}" text-anchor="middle" fill="#3b82f6" font-family="Arial" font-size="${width * 0.06}" font-weight="600">PDF</text>
-        <text x="${width / 2}" y="${height * 0.88}" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="${width * 0.04}">Document</text>
-      </svg>
-    `;
+    let pdfDataUrl = pdfUrl;
 
-    const thumbnailData = `data:image/svg+xml;base64,${btoa(fallbackSvg)}`;
-
-    // For stored files, cache the SVG placeholder
-    if (filePath && fileId) {
-      try {
-        const thumbnailPath = `${filePath.replace('.pdf', '_thumb.svg')}`;
-        
-        await supabaseClient.storage
-          .from('thumbnails')
-          .upload(thumbnailPath, new Blob([fallbackSvg], { type: 'image/svg+xml' }), {
-            contentType: 'image/svg+xml',
-            upsert: true
-          });
-
-        await supabaseClient
-          .from('user_files')
-          .update({ thumbnail_url: thumbnailPath })
-          .eq('id', fileId);
-
-        const { data: { publicUrl } } = supabaseClient.storage
-          .from('thumbnails')
-          .getPublicUrl(thumbnailPath);
-
-        console.log('SVG placeholder stored successfully:', publicUrl);
-
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            thumbnailUrl: publicUrl,
-            thumbnailData: thumbnailData,
-            fallback: true
-          }),
-          { 
-            status: 200, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          }
-        );
-      } catch (storageError) {
-        console.error('Storage error:', storageError);
-        // Continue with in-memory response
+    // If we have filePath, get the signed URL
+    if (filePath && !pdfUrl) {
+      const { data: { signedUrl } } = await supabaseClient.storage
+        .from('user_files')
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
+      
+      if (!signedUrl) {
+        throw new Error('Could not get signed URL for PDF');
       }
+      pdfDataUrl = signedUrl;
     }
 
-    // Return the SVG placeholder immediately
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        thumbnailData: thumbnailData,
-        fallback: true
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    if (!pdfDataUrl) {
+      throw new Error('No PDF URL provided');
+    }
+
+    // Generate actual PDF thumbnail using Puppeteer
+    const browser = await puppeteer.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: true
+    });
+
+    try {
+      const page = await browser.newPage();
+      
+      // Set viewport size
+      await page.setViewport({ width: width * 2, height: height * 2 });
+      
+      // Navigate to PDF with specific page
+      await page.goto(`${pdfDataUrl}#page=${pageNumber}`, {
+        waitUntil: 'networkidle0',
+        timeout: 30000
+      });
+
+      // Wait a bit for PDF to fully render
+      await page.waitForTimeout(2000);
+
+      // Take screenshot
+      const screenshot = await page.screenshot({
+        type: 'png',
+        quality: Math.round(quality * 100),
+        fullPage: false,
+        clip: {
+          x: 0,
+          y: 0,
+          width: width * 2,
+          height: height * 2
+        }
+      });
+
+      await browser.close();
+
+      // Convert to base64
+      const base64Image = btoa(String.fromCharCode(...new Uint8Array(screenshot)));
+      const thumbnailData = `data:image/png;base64,${base64Image}`;
+
+      // For stored files, cache the thumbnail
+      if (filePath && fileId) {
+        try {
+          const thumbnailPath = `${filePath.replace('.pdf', `_thumb_p${pageNumber}.png`)}`;
+          
+          await supabaseClient.storage
+            .from('thumbnails')
+            .upload(thumbnailPath, screenshot, {
+              contentType: 'image/png',
+              upsert: true
+            });
+
+          // Update the user_files table with thumbnail URL for page 1
+          if (pageNumber === 1) {
+            await supabaseClient
+              .from('user_files')
+              .update({ thumbnail_url: thumbnailPath })
+              .eq('id', fileId);
+          }
+
+          const { data: { publicUrl } } = supabaseClient.storage
+            .from('thumbnails')
+            .getPublicUrl(thumbnailPath);
+
+          console.log('PNG thumbnail stored successfully:', publicUrl);
+
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              thumbnailUrl: publicUrl,
+              thumbnailData: thumbnailData,
+              pageNumber: pageNumber
+            }),
+            { 
+              status: 200, 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
+        } catch (storageError) {
+          console.error('Storage error:', storageError);
+          // Continue with in-memory response
+        }
       }
-    );
+
+      // Return the PNG thumbnail
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          thumbnailData: thumbnailData,
+          pageNumber: pageNumber
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+
+    } catch (puppeteerError) {
+      console.error('Puppeteer error:', puppeteerError);
+      await browser.close();
+      throw puppeteerError;
+    }
 
   } catch (error) {
     console.error('Error in generate-thumbnail function:', error);
     
-    // Return a basic fallback even on error
-    const basicSvg = `
-      <svg width="200" height="260" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
-        <rect width="200" height="260" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="1" rx="8"/>
-        <text x="100" y="130" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="12" font-weight="600">PDF</text>
+    // Return a styled SVG fallback on error
+    const { width = 300, height = 400, pageNumber = 1 } = await req.json().catch(() => ({}));
+    
+    const fallbackSvg = `
+      <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#f8fafc"/>
+            <stop offset="100%" style="stop-color:#e2e8f0"/>
+          </linearGradient>
+        </defs>
+        <rect width="${width}" height="${height}" fill="url(#bg)" stroke="#cbd5e1" stroke-width="1" rx="8"/>
+        <circle cx="${width / 2}" cy="${height * 0.4}" r="${width * 0.08}" fill="#ef4444" opacity="0.1"/>
+        <text x="${width / 2}" y="${height * 0.45}" text-anchor="middle" fill="#ef4444" font-family="Arial" font-size="${width * 0.04}" font-weight="600">Error</text>
+        <text x="${width / 2}" y="${height * 0.55}" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="${width * 0.03}">Page ${pageNumber}</text>
+        <text x="${width / 2}" y="${height * 0.7}" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="${width * 0.03}">Could not generate</text>
+        <text x="${width / 2}" y="${height * 0.78}" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="${width * 0.03}">thumbnail</text>
       </svg>
     `;
     
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        thumbnailData: `data:image/svg+xml;base64,${btoa(basicSvg)}`,
+        success: false,
+        error: error.message,
+        thumbnailData: `data:image/svg+xml;base64,${btoa(fallbackSvg)}`,
         fallback: true
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

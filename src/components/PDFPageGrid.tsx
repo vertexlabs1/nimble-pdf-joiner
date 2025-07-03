@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
+import { supabase } from '@/integrations/supabase/client';
 
 interface PDFPageGridProps {
   file: File;
@@ -18,19 +19,13 @@ export default function PDFPageGrid({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(0);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [thumbnails, setThumbnails] = useState<{ [key: number]: string }>({});
+  const [generatingThumbnails, setGeneratingThumbnails] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     if (file) {
       loadPDFInfo();
     }
-    
-    // Cleanup object URL when component unmounts or file changes
-    return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-      }
-    };
   }, [file]);
 
   const loadPDFInfo = async () => {
@@ -45,16 +40,63 @@ export default function PDFPageGrid({
       
       setTotalPages(pageCount);
       onLoad?.(pageCount);
-
-      // Create object URL for the PDF file
-      const url = URL.createObjectURL(file);
-      setPdfUrl(url);
-      
       setLoading(false);
+      
+      // Start generating thumbnails for visible pages
+      generateThumbnailsForPages(Math.min(pageCount, maxPages));
     } catch (err) {
       console.error('Error loading PDF info:', err);
       setError('Failed to load PDF. The file may be corrupted or encrypted.');
       setLoading(false);
+    }
+  };
+
+  const generateThumbnailsForPages = async (pageCount: number) => {
+    // Create object URL for the PDF file to send to edge function
+    const pdfUrl = URL.createObjectURL(file);
+    
+    try {
+      // Generate thumbnails for first few pages in parallel
+      const thumbnailPromises = Array.from({ length: pageCount }, (_, index) => 
+        generateThumbnail(pdfUrl, index + 1)
+      );
+      
+      await Promise.all(thumbnailPromises);
+    } finally {
+      // Clean up object URL
+      URL.revokeObjectURL(pdfUrl);
+    }
+  };
+
+  const generateThumbnail = async (pdfUrl: string, pageNumber: number) => {
+    if (thumbnails[pageNumber] || generatingThumbnails[pageNumber]) {
+      return;
+    }
+
+    setGeneratingThumbnails(prev => ({ ...prev, [pageNumber]: true }));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
+        body: {
+          pdfUrl,
+          pageNumber,
+          width: 200,
+          height: 260
+        }
+      });
+
+      if (error) {
+        console.error(`Error generating thumbnail for page ${pageNumber}:`, error);
+        return;
+      }
+
+      if (data?.thumbnailData) {
+        setThumbnails(prev => ({ ...prev, [pageNumber]: data.thumbnailData }));
+      }
+    } catch (err) {
+      console.error(`Error generating thumbnail for page ${pageNumber}:`, err);
+    } finally {
+      setGeneratingThumbnails(prev => ({ ...prev, [pageNumber]: false }));
     }
   };
 
@@ -102,26 +144,21 @@ export default function PDFPageGrid({
           return (
             <div key={index} className="space-y-2">
               <div className="relative aspect-[3/4] bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
-                {pdfUrl ? (
-                  <>
-                    <iframe
-                      src={`${pdfUrl}#page=${pageNumber}&view=FitH&toolbar=0&navpanes=0&statusbar=0&scrollbar=0`}
-                      className="w-full h-full pointer-events-none border-0"
-                      style={{
-                        transform: 'scale(0.5)',
-                        transformOrigin: 'top left',
-                        width: '200%',
-                        height: '200%'
-                      }}
-                      title={`Page ${pageNumber}`}
-                    />
-                    {/* Overlay to prevent interaction with iframe */}
-                    <div className="absolute inset-0 bg-transparent pointer-events-none" />
-                  </>
+                {thumbnails[pageNumber] ? (
+                  <img
+                    src={thumbnails[pageNumber]}
+                    alt={`Page ${pageNumber}`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : generatingThumbnails[pageNumber] ? (
+                  <div className="w-full h-full bg-muted flex flex-col items-center justify-center animate-pulse">
+                    <FileText className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Generating...</span>
+                  </div>
                 ) : (
                   <div className="w-full h-full bg-muted flex flex-col items-center justify-center">
                     <FileText className="h-6 w-6 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">{pageNumber}</span>
+                    <span className="text-xs text-muted-foreground">Page {pageNumber}</span>
                   </div>
                 )}
               </div>
