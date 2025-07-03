@@ -38,18 +38,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAdminLoading(true);
     
     try {
-      // Use timeout with AbortController for cleaner handling
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      
       const { data, error } = await supabase
         .from('admins')
         .select('email')
         .eq('email', userEmail)
-        .abortSignal(controller.signal)
         .maybeSingle();
-      
-      clearTimeout(timeoutId);
       
       if (error) {
         console.error('Error checking admin status:', error);
