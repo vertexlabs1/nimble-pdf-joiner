@@ -2,6 +2,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import DashboardHome from './dashboard/DashboardHome';
 import MyFiles from './dashboard/MyFiles';
 import ToolPage from './dashboard/ToolPage';
@@ -98,7 +99,14 @@ export default function Dashboard() {
             />
           } 
         />
-        <Route path="/admin" element={<AdminPanel />} />
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <AdminPanel />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </DashboardLayout>
   );

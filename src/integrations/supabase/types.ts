@@ -63,6 +63,39 @@ export type Database = {
         }
         Relationships: []
       }
+      users: {
+        Row: {
+          auth_user_id: string
+          created_at: string
+          email: string
+          first_name: string | null
+          id: string
+          is_super_admin: boolean
+          last_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_user_id: string
+          created_at?: string
+          email: string
+          first_name?: string | null
+          id?: string
+          is_super_admin?: boolean
+          last_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_user_id?: string
+          created_at?: string
+          email?: string
+          first_name?: string | null
+          id?: string
+          is_super_admin?: boolean
+          last_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       waitlist_signups: {
         Row: {
           created_at: string | null

@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
 
-  const checkAdminStatus = async (userEmail: string) => {
+  const checkAdminStatus = async (userId: string) => {
     if (adminChecked) return;
     
     setAdminLoading(true);
@@ -47,9 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     try {
       const { data, error } = await supabase
-        .from('admins')
-        .select('email')
-        .eq('email', userEmail)
+        .from('users')
+        .select('is_super_admin')
+        .eq('auth_user_id', userId)
         .maybeSingle();
       
       clearTimeout(timeoutId);
@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
       } else {
-        setIsAdmin(!!data);
+        setIsAdmin(data?.is_super_admin || false);
       }
       setAdminChecked(true);
     } catch (error) {
@@ -82,10 +82,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user?.email) {
+        if (session?.user?.id) {
           // Reset admin check for new user
           setAdminChecked(false);
-          checkAdminStatus(session.user.email);
+          checkAdminStatus(session.user.id);
         } else {
           // Clear admin state for logged out users
           setIsAdmin(false);
@@ -105,8 +105,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSession(session);
       setUser(session?.user ?? null);
       
-      if (session?.user?.email) {
-        checkAdminStatus(session.user.email);
+      if (session?.user?.id) {
+        checkAdminStatus(session.user.id);
       } else {
         // No session, stop loading immediately
         setAdminChecked(true);
