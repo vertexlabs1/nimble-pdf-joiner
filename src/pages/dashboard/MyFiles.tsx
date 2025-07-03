@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Upload, FolderOpen, Download, Trash2, Calendar, HardDrive, LayoutGrid, LayoutList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { getUserFiles, downloadUserFile, deleteUserFile, type UserFile } from '@/utils/fileStorage';
+import { listUserFiles, downloadFile, deleteFile, type UserStorageFile } from '@/utils/storageAPI';
+import { supabase } from '@/integrations/supabase/client';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import UnifiedPDFThumbnail from '@/components/UnifiedPDFThumbnail';
+import PDFThumbnailCanvas from '@/components/PDFThumbnailCanvas';
+import FileGridSkeleton from '@/components/FileGridSkeleton';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 export default function MyFiles() {
-  const [files, setFiles] = useState<UserFile[]>([]);
+  const [files, setFiles] = useState<UserStorageFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export default function MyFiles() {
   const loadFiles = async () => {
     setLoading(true);
     try {
-      const userFiles = await getUserFiles();
+      const userFiles = await listUserFiles();
       setFiles(userFiles);
     } catch (error) {
       console.error('Error loading files:', error);
@@ -54,24 +55,18 @@ export default function MyFiles() {
     }
   };
 
-  const handleDownload = async (file: UserFile) => {
+  const handleDownload = async (file: UserStorageFile) => {
     setDownloading(file.id);
     try {
-      const result = await downloadUserFile(file.file_path);
-      if (result.success && result.blob) {
-        // Create download link
-        const url = URL.createObjectURL(result.blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = file.filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
+      if (!user) return;
+      
+      const filePath = `${user.id}/${file.name}`;
+      const result = await downloadFile(filePath, file.displayName);
+      
+      if (result.success) {
         toast({
           title: 'Download started',
-          description: `Your file "${file.filename}" is downloading`,
+          description: `Your file "${file.displayName}" is downloading`,
         });
       } else {
         toast({
@@ -92,15 +87,19 @@ export default function MyFiles() {
     }
   };
 
-  const handleDelete = async (file: UserFile) => {
+  const handleDelete = async (file: UserStorageFile) => {
     setDeleting(file.id);
     try {
-      const result = await deleteUserFile(file.id, file.file_path);
+      if (!user) return;
+      
+      const filePath = `${user.id}/${file.name}`;
+      const result = await deleteFile(filePath);
+      
       if (result.success) {
         setFiles(files.filter(f => f.id !== file.id));
         toast({
           title: 'File deleted',
-          description: `"${file.filename}" has been deleted successfully`,
+          description: `"${file.displayName}" has been deleted successfully`,
         });
       } else {
         toast({
@@ -129,8 +128,8 @@ export default function MyFiles() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (date: Date): string => {
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -165,13 +164,8 @@ export default function MyFiles() {
       </div>
 
       {loading ? (
-        <div className="bg-card rounded-xl p-12 border shadow-sm text-center">
-          <div className="max-w-md mx-auto space-y-4">
-            <div className="animate-spin p-4 bg-muted/50 rounded-full w-fit mx-auto">
-              <FileText className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h3 className="text-lg font-semibold text-card-foreground">Loading files...</h3>
-          </div>
+        <div className="space-y-6">
+          <FileGridSkeleton viewMode={viewMode} count={8} />
         </div>
       ) : files.length === 0 ? (
         <div className="bg-card rounded-xl p-12 border shadow-sm text-center">
@@ -193,26 +187,28 @@ export default function MyFiles() {
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 2xl:grid-cols-8">
-          {files.map((file) => (
-            <div key={file.id} className="group relative">
-              <div className="space-y-2">
-                <UnifiedPDFThumbnail 
-                  source={file.file_path}
-                  filename={file.filename}
-                  fileId={file.id}
-                  size="large"
-                  lazy={true}
-                />
-                
-                <div className="space-y-1">
-                  <h3 className="text-sm font-medium text-foreground truncate" title={file.filename}>
-                    {file.filename.replace(/\.[^/.]+$/, "")}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {formatFileSize(file.file_size)} • {formatDate(file.created_at).split(',')[0]}
-                  </p>
+          {files.map((file) => {
+            const filePath = user ? `${user.id}/${file.name}` : '';
+            
+            return (
+              <div key={file.id} className="group relative">
+                <div className="space-y-2">
+                  <PDFThumbnailCanvas
+                    filePath={filePath}
+                    fileName={file.displayName}
+                    size="large"
+                    lazy={true}
+                  />
+                  
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-medium text-foreground truncate" title={file.displayName}>
+                      {file.displayName.replace(/\.[^/.]+$/, "")}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(file.fileSize)} • {formatDate(file.lastModified).split(',')[0]}
+                    </p>
+                  </div>
                 </div>
-              </div>
               
               {/* Hover overlay with actions */}
               <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
@@ -243,7 +239,7 @@ export default function MyFiles() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete File</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Are you sure you want to delete "{file.filename}"? This action cannot be undone.
+                        Are you sure you want to delete "{file.displayName}"? This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -258,88 +254,92 @@ export default function MyFiles() {
                   </AlertDialogContent>
                 </AlertDialog>
               </div>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="space-y-1">
-          {files.map((file) => (
-            <div key={file.id} className="group p-3 rounded-lg hover:bg-muted/30 transition-colors border border-transparent hover:border-border/50">
-              <div className="flex items-center gap-4">
-                <UnifiedPDFThumbnail 
-                  source={file.file_path}
-                  filename={file.filename}
-                  fileId={file.id}
-                  size="small"
-                  lazy={true}
-                />
-                
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-foreground truncate" title={file.filename}>
-                    {file.filename}
-                  </h3>
-                  <p className="text-sm text-muted-foreground truncate" title={file.original_filename}>
-                    From: {file.original_filename}
-                  </p>
-                </div>
-                
-                <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <HardDrive className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{formatFileSize(file.file_size)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Calendar className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">{formatDate(file.created_at)}</span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 hover:bg-secondary"
-                    onClick={() => handleDownload(file)}
-                    disabled={downloading === file.id}
-                    title="Download"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
+          {files.map((file) => {
+            const filePath = user ? `${user.id}/${file.name}` : '';
+            
+            return (
+              <div key={file.id} className="group p-3 rounded-lg hover:bg-muted/30 transition-colors border border-transparent hover:border-border/50">
+                <div className="flex items-center gap-4">
+                  <PDFThumbnailCanvas
+                    filePath={filePath}
+                    fileName={file.displayName}
+                    size="small"
+                    lazy={true}
+                  />
                   
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 hover:bg-destructive/10 text-destructive hover:text-destructive"
-                        disabled={deleting === file.id}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete File</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete "{file.filename}"? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(file)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-foreground truncate" title={file.displayName}>
+                      {file.displayName}
+                    </h3>
+                    <p className="text-sm text-muted-foreground truncate">
+                      PDF Document
+                    </p>
+                  </div>
+                  
+                  <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <HardDrive className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{formatFileSize(file.fileSize)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Calendar className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{formatDate(file.lastModified)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 hover:bg-secondary"
+                      onClick={() => handleDownload(file)}
+                      disabled={downloading === file.id}
+                      title="Download"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 hover:bg-destructive/10 text-destructive hover:text-destructive"
+                          disabled={deleting === file.id}
+                          title="Delete"
                         >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete File</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{file.displayName}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(file)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
