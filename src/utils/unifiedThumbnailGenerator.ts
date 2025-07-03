@@ -1,8 +1,13 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '@/integrations/supabase/client';
 
-// Set up PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+// Set up PDF.js worker with better error handling
+try {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  console.log('PDF.js worker configured successfully');
+} catch (error) {
+  console.error('Failed to configure PDF.js worker:', error);
+}
 
 // Unified thumbnail cache
 const thumbnailCache = new Map<string, string>();
@@ -153,33 +158,60 @@ async function generateFromStoredFile(
 }
 
 /**
- * Render PDF page to canvas using PDF.js
+ * Render PDF page to canvas using PDF.js with robust error handling
  */
 async function renderPDFPage(
   arrayBuffer: ArrayBuffer,
   options: ThumbnailOptions
 ): Promise<string | null> {
+  let pdf = null;
+  let page = null;
+  
   try {
     const { width = 200, height = 260, quality = 0.8, pageNumber = 1 } = options;
+    console.log(`Starting PDF rendering for page ${pageNumber}, dimensions: ${width}x${height}`);
 
-    // Load PDF document
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    // Validate inputs
+    if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+      throw new Error('Invalid ArrayBuffer provided');
+    }
+
+    // Load PDF document with timeout
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: arrayBuffer,
+      cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
+      cMapPacked: true
+    });
+    
+    pdf = await Promise.race([
+      loadingTask.promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('PDF loading timeout')), 10000))
+    ]);
+    
+    console.log(`PDF loaded successfully, ${pdf.numPages} pages`);
     
     if (pdf.numPages < pageNumber) {
       console.warn(`Page ${pageNumber} not found, using page 1`);
     }
 
-    const page = await pdf.getPage(Math.min(pageNumber, pdf.numPages));
+    const actualPageNumber = Math.min(pageNumber, pdf.numPages);
+    page = await pdf.getPage(actualPageNumber);
+    console.log(`Page ${actualPageNumber} loaded`);
     
     // Calculate scale to fit desired dimensions
     const viewport = page.getViewport({ scale: 1 });
     const scaleX = width / viewport.width;
     const scaleY = height / viewport.height;
-    const scale = Math.min(scaleX, scaleY);
+    const scale = Math.min(scaleX, scaleY, 2); // Cap scale at 2x
+    
+    if (scale <= 0 || !isFinite(scale)) {
+      throw new Error(`Invalid scale calculated: ${scale}`);
+    }
     
     const scaledViewport = page.getViewport({ scale });
+    console.log(`Calculated scale: ${scale}, viewport: ${scaledViewport.width}x${scaledViewport.height}`);
 
-    // Create canvas
+    // Create canvas with validation
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     
@@ -187,25 +219,54 @@ async function renderPDFPage(
       throw new Error('Could not create canvas context');
     }
 
-    canvas.width = scaledViewport.width;
-    canvas.height = scaledViewport.height;
+    // Validate canvas dimensions
+    const canvasWidth = Math.floor(scaledViewport.width);
+    const canvasHeight = Math.floor(scaledViewport.height);
+    
+    if (canvasWidth <= 0 || canvasHeight <= 0 || canvasWidth > 4096 || canvasHeight > 4096) {
+      throw new Error(`Invalid canvas dimensions: ${canvasWidth}x${canvasHeight}`);
+    }
 
-    // Render page to canvas
-    await page.render({
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    console.log(`Canvas created: ${canvasWidth}x${canvasHeight}`);
+
+    // Render page to canvas with timeout
+    const renderPromise = page.render({
       canvasContext: context,
       viewport: scaledViewport
     }).promise;
+    
+    await Promise.race([
+      renderPromise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Rendering timeout')), 15000))
+    ]);
+    
+    console.log('Page rendered successfully');
 
     // Convert to data URL
     const dataUrl = canvas.toDataURL('image/jpeg', quality);
-    
-    // Cleanup
-    page.cleanup();
+    console.log(`Thumbnail generated successfully, size: ${dataUrl.length} bytes`);
     
     return dataUrl;
   } catch (error) {
     console.error('Error rendering PDF page:', error);
+    console.error('Error stack:', error.stack);
     return null;
+  } finally {
+    // Cleanup resources
+    try {
+      if (page) {
+        page.cleanup();
+        console.log('Page cleanup completed');
+      }
+      if (pdf) {
+        pdf.destroy();
+        console.log('PDF cleanup completed');
+      }
+    } catch (cleanupError) {
+      console.warn('Error during cleanup:', cleanupError);
+    }
   }
 }
 
