@@ -89,6 +89,10 @@ export default defineConfig(({ mode }) => {
       format: 'es',
     },
     assetsInclude: ['**/*.worker.js', '**/*.worker.min.js'],
+    // Ensure proper MIME types for worker files
+    define: {
+      global: 'globalThis',
+    },
     build: {
       rollupOptions: {
         output: {
