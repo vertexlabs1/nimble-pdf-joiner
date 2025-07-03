@@ -43,7 +43,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('email', userEmail)
         .maybeSingle();
       
-      setIsAdmin(!error && !!data);
+      if (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(!!data);
+      }
       setAdminChecked(true);
     } catch (error) {
       console.error('Error checking admin status:', error);
