@@ -8,38 +8,35 @@ export async function initializePDFWorker(): Promise<boolean> {
     return true;
   }
 
-  const isProduction = window.location.hostname !== 'localhost';
-  console.log('PDF.js worker initialization starting...', { isProduction });
+  console.log('PDF.js worker initialization starting...');
 
   try {
-    // Multiple fallback CDN sources for production reliability
+    // Try local worker first (both dev and production)
+    try {
+      const workerUrl = new URL(
+        'pdfjs-dist/build/pdf.worker.min.js', 
+        import.meta.url
+      ).href;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+      console.log('PDF.js worker configured with local URL:', workerUrl);
+      
+      // Test local worker
+      if (await testWorker()) {
+        console.log('PDF.js worker successful with local worker');
+        workerInitialized = true;
+        return true;
+      }
+    } catch (localError) {
+      console.warn('Local worker setup failed:', localError);
+    }
+
+    // Fallback to CDN sources only if local fails
     const workerSources = [
       `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`,
       `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
       'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
     ];
 
-    // Try local worker first in development
-    if (!isProduction) {
-      try {
-        const workerUrl = new URL(
-          'pdfjs-dist/build/pdf.worker.min.js', 
-          import.meta.url
-        ).href;
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-        console.log('PDF.js worker configured with local URL:', workerUrl);
-        
-        // Test local worker
-        if (await testWorker()) {
-          workerInitialized = true;
-          return true;
-        }
-      } catch (localError) {
-        console.warn('Local worker setup failed:', localError);
-      }
-    }
-
-    // Try CDN sources
     for (const workerUrl of workerSources) {
       try {
         pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;

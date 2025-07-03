@@ -26,4 +26,16 @@ export default defineConfig(({ mode }) => ({
     format: 'es',
   },
   assetsInclude: ['**/*.worker.js', '**/*.worker.min.js'],
+  build: {
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name?.endsWith('.worker.min.js')) {
+            return 'assets/[name]-[hash][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        }
+      }
+    }
+  },
 }));

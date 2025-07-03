@@ -1,12 +1,17 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '@/integrations/supabase/client';
 
-// Set up PDF.js worker with better error handling
-try {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-  console.log('PDF.js worker configured successfully');
-} catch (error) {
-  console.error('Failed to configure PDF.js worker:', error);
+// Initialize PDF.js worker
+import { initializePDFWorker } from './pdfConfig';
+
+// Initialize worker on module load
+let workerInitPromise: Promise<boolean> | null = null;
+
+function ensureWorkerInit(): Promise<boolean> {
+  if (!workerInitPromise) {
+    workerInitPromise = initializePDFWorker();
+  }
+  return workerInitPromise;
 }
 
 // Unified thumbnail cache
@@ -170,6 +175,12 @@ async function renderPDFPage(
   try {
     const { width = 200, height = 260, quality = 0.8, pageNumber = 1 } = options;
     console.log(`Starting PDF rendering for page ${pageNumber}, dimensions: ${width}x${height}`);
+
+    // Ensure worker is initialized
+    const workerReady = await ensureWorkerInit();
+    if (!workerReady) {
+      throw new Error('PDF.js worker failed to initialize');
+    }
 
     // Validate inputs
     if (!arrayBuffer || arrayBuffer.byteLength === 0) {
