@@ -47,25 +47,101 @@ serve(async (req) => {
     console.log(`File downloaded successfully, size: ${arrayBuffer.byteLength} bytes`);
 
     try {
-      // Use pdf-lib for basic PDF processing to extract first page
-      const { PDFDocument } = await import('https://esm.sh/pdf-lib@1.17.1');
+      // Use PDF.js for rendering PDF to canvas
+      const pdfjsLib = await import('https://esm.sh/pdfjs-dist@4.0.379/build/pdf.min.mjs');
       
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
-      const pageCount = pdfDoc.getPageCount();
+      // Set up PDF.js worker
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://esm.sh/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+      
+      const pdfDocument = await pdfjsLib.getDocument({ 
+        data: arrayBuffer,
+        verbosity: 0
+      }).promise;
+      
+      const pageCount = pdfDocument.numPages;
+      console.log(`PDF loaded with ${pageCount} pages`);
       
       if (pageCount === 0) {
         throw new Error('PDF has no pages');
       }
 
-      // Create a new PDF with just the first page
-      const newPdf = await PDFDocument.create();
-      const [firstPage] = await newPdf.copyPages(pdfDoc, [0]);
-      newPdf.addPage(firstPage);
+      // Get the first page
+      const page = await pdfDocument.getPage(1);
+      const viewport = page.getViewport({ scale: 1.5 });
       
-      const pdfBytes = await newPdf.save();
+      // Create a canvas for rendering
+      const canvas = new OffscreenCanvas(viewport.width, viewport.height);
+      const context = canvas.getContext('2d');
       
-      // For now, create a styled placeholder SVG with actual PDF info
-      const placeholderSvg = `
+      if (!context) {
+        throw new Error('Failed to get canvas context');
+      }
+
+      // Render the page
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+      }).promise;
+
+      // Convert canvas to blob
+      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+      
+      // Generate thumbnail file path
+      const thumbnailPath = `${filePath.replace('.pdf', '_thumb.jpg')}`;
+
+      // Upload thumbnail to storage
+      const { error: uploadError } = await supabaseClient.storage
+        .from('thumbnails')
+        .upload(thumbnailPath, blob, {
+          contentType: 'image/jpeg',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Error uploading thumbnail:', uploadError);
+        throw new Error('Failed to upload thumbnail');
+      }
+
+      // Update database with thumbnail URL
+      const { error: updateError } = await supabaseClient
+        .from('user_files')
+        .update({ thumbnail_url: thumbnailPath })
+        .eq('id', fileId);
+
+      if (updateError) {
+        console.error('Error updating thumbnail URL:', updateError);
+        throw new Error('Failed to update database');
+      }
+
+      // Get public URL for the thumbnail
+      const { data: { publicUrl } } = supabaseClient.storage
+        .from('thumbnails')
+        .getPublicUrl(thumbnailPath);
+
+      console.log(`Thumbnail generated successfully: ${publicUrl}`);
+
+      // Convert blob to base64 for immediate use
+      const buffer = await blob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          thumbnailUrl: publicUrl,
+          thumbnailData: `data:image/jpeg;base64,${base64}`,
+          pageCount
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+
+    } catch (pdfError) {
+      console.error('PDF processing error:', pdfError);
+      
+      // Fallback to styled SVG placeholder if PDF processing fails
+      const fallbackSvg = `
         <svg width="200" height="260" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -86,75 +162,7 @@ serve(async (req) => {
           <rect x="20" y="115" width="90" height="8" fill="url(#content)" rx="1"/>
           <circle cx="100" cy="180" r="25" fill="#3b82f6" opacity="0.1"/>
           <text x="100" y="185" text-anchor="middle" fill="#3b82f6" font-family="Arial" font-size="12" font-weight="bold">PDF</text>
-          <text x="100" y="220" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="10">${pageCount} pages</text>
-        </svg>
-      `;
-
-      // Generate thumbnail file path
-      const thumbnailPath = `${filePath.replace('.pdf', '_thumb.svg')}`;
-
-      // Upload thumbnail to storage
-      const { error: uploadError } = await supabaseClient.storage
-        .from('thumbnails')
-        .upload(thumbnailPath, new Blob([placeholderSvg], { type: 'image/svg+xml' }), {
-          contentType: 'image/svg+xml',
-          upsert: true
-        });
-
-      if (uploadError) {
-        console.error('Error uploading thumbnail:', uploadError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to upload thumbnail' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Update database with thumbnail URL
-      const { error: updateError } = await supabaseClient
-        .from('user_files')
-        .update({ thumbnail_url: thumbnailPath })
-        .eq('id', fileId);
-
-      if (updateError) {
-        console.error('Error updating thumbnail URL:', updateError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to update database' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Get public URL for the thumbnail
-      const { data: { publicUrl } } = supabaseClient.storage
-        .from('thumbnails')
-        .getPublicUrl(thumbnailPath);
-
-      console.log(`Thumbnail generated successfully: ${publicUrl}`);
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          thumbnailUrl: publicUrl,
-          thumbnailData: `data:image/svg+xml;base64,${btoa(placeholderSvg)}`,
-          pageCount
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-
-    } catch (pdfError) {
-      console.error('PDF processing error:', pdfError);
-      
-      // Fallback to generic placeholder if PDF processing fails
-      const fallbackSvg = `
-        <svg width="200" height="260" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
-          <rect width="200" height="260" fill="#f8f9fa" stroke="#e9ecef" stroke-width="2"/>
-          <rect x="20" y="40" width="160" height="20" fill="#dee2e6" rx="2"/>
-          <rect x="20" y="80" width="120" height="20" fill="#dee2e6" rx="2"/>
-          <rect x="20" y="120" width="140" height="20" fill="#dee2e6" rx="2"/>
-          <rect x="20" y="160" width="100" height="20" fill="#dee2e6" rx="2"/>
-          <text x="100" y="220" text-anchor="middle" fill="#6c757d" font-family="Arial" font-size="14">PDF</text>
+          <text x="100" y="220" text-anchor="middle" fill="#64748b" font-family="Arial" font-size="10">Document</text>
         </svg>
       `;
 

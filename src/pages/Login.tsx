@@ -13,7 +13,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
-  const { signIn, signUp, user, isAdmin, loading } = useAuth();
+  const { signIn, signUp, user, isAdmin, loading, adminLoading } = useAuth();
   const { toast } = useToast();
   const location = useLocation();
 
@@ -29,7 +29,7 @@ export default function Login() {
   }, [location.state, toast]);
 
   // Show loading while checking auth state
-  if (loading) {
+  if (loading || (user && adminLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">Loading...</div>
