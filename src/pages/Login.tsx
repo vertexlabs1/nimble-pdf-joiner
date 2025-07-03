@@ -36,8 +36,8 @@ export default function Login() {
     );
   }
 
-  // Redirect if already authenticated and admin
-  if (user && isAdmin) {
+  // Redirect if already authenticated
+  if (user) {
     return <Navigate to="/dashboard" replace />;
   }
 
