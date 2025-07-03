@@ -11,7 +11,7 @@ export async function initializePDFWorker(): Promise<boolean> {
   console.log('PDF.js worker initialization starting...');
 
   try {
-    // Try static worker file from public directory first
+    // Use local static worker file only
     const staticWorkerUrl = '/pdf.worker.min.js';
     pdfjsLib.GlobalWorkerOptions.workerSrc = staticWorkerUrl;
     console.log('PDF.js worker configured with static URL:', staticWorkerUrl);
@@ -22,31 +22,9 @@ export async function initializePDFWorker(): Promise<boolean> {
       return true;
     }
 
-    // Fallback to CDN sources if static fails
-    const workerSources = [
-      `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`,
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js',
-      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`
-    ];
-
-    for (const workerUrl of workerSources) {
-      try {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
-        console.log('Trying fallback PDF.js worker URL:', workerUrl);
-        
-        if (await testWorker()) {
-          console.log('PDF.js worker successful with fallback:', workerUrl);
-          workerInitialized = true;
-          return true;
-        }
-      } catch (error) {
-        console.warn('Fallback worker failed with URL:', workerUrl, error);
-      }
-    }
-
-    throw new Error('All worker sources failed');
+    throw new Error('Static worker failed to load');
   } catch (error) {
-    console.error('PDF.js worker initialization completely failed:', error);
+    console.error('PDF.js worker initialization failed:', error);
     workerInitialized = false;
     return false;
   }
