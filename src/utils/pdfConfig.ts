@@ -1,8 +1,8 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Completely disable workers - use undefined to force main thread
-pdfjsLib.GlobalWorkerOptions.workerSrc = undefined;
+// Completely disable workers - use empty string to force main thread
+pdfjsLib.GlobalWorkerOptions.workerSrc = '';
 
 console.log('PDF.js initialized without worker - forced main thread, version:', pdfjsLib.version);
 
