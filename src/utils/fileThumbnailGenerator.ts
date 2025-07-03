@@ -92,41 +92,75 @@ async function generateFileThumbnailInternal(file: File, pageNumber: number, cac
 function generatePlaceholderThumbnail(): string {
   const placeholderSvg = `
     <svg width="160" height="208" viewBox="0 0 160 208" xmlns="http://www.w3.org/2000/svg">
-      <rect width="160" height="208" fill="hsl(var(--card))" stroke="hsl(var(--border))" stroke-width="2"/>
-      <rect x="16" y="32" width="128" height="16" fill="hsl(var(--muted))" rx="2"/>
-      <rect x="16" y="64" width="96" height="16" fill="hsl(var(--muted))" rx="2"/>
-      <rect x="16" y="96" width="112" height="16" fill="hsl(var(--muted))" rx="2"/>
-      <rect x="16" y="128" width="80" height="16" fill="hsl(var(--muted))" rx="2"/>
-      <text x="80" y="176" text-anchor="middle" fill="hsl(var(--muted-foreground))" font-family="Arial" font-size="12">PDF</text>
+      <rect width="160" height="208" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+      <rect x="16" y="32" width="128" height="16" fill="#f3f4f6" rx="2"/>
+      <rect x="16" y="64" width="96" height="16" fill="#f3f4f6" rx="2"/>
+      <rect x="16" y="96" width="112" height="16" fill="#f3f4f6" rx="2"/>
+      <rect x="16" y="128" width="80" height="16" fill="#f3f4f6" rx="2"/>
+      <text x="80" y="176" text-anchor="middle" fill="#6b7280" font-family="Arial" font-size="12">PDF</text>
     </svg>
   `;
   return `data:image/svg+xml;base64,${btoa(placeholderSvg)}`;
 }
 
 async function renderPageThumbnail(page: any, maxWidth: number, maxHeight: number): Promise<string> {
-  const viewport = page.getViewport({ scale: 1 });
-  
-  // Calculate scale to fit within max dimensions
-  const scaleX = maxWidth / viewport.width;
-  const scaleY = maxHeight / viewport.height;
-  const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
-  
-  const scaledViewport = page.getViewport({ scale });
-  
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d');
-  
-  if (!context) {
-    throw new Error('Failed to get canvas context');
+  try {
+    const viewport = page.getViewport({ scale: 1 });
+    console.log('Original viewport size:', viewport.width, 'x', viewport.height);
+    
+    // Calculate scale to fit within max dimensions
+    const scaleX = maxWidth / viewport.width;
+    const scaleY = maxHeight / viewport.height;
+    const scale = Math.min(scaleX, scaleY, 1); // Don't scale up
+    
+    const scaledViewport = page.getViewport({ scale });
+    console.log('Scaled viewport size:', scaledViewport.width, 'x', scaledViewport.height, 'scale:', scale);
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d', { 
+      alpha: false, // Optimize for PDF rendering
+      willReadFrequently: false 
+    });
+    
+    if (!context) {
+      throw new Error('Failed to get canvas context');
+    }
+    
+    canvas.width = Math.floor(scaledViewport.width);
+    canvas.height = Math.floor(scaledViewport.height);
+    console.log('Canvas size set to:', canvas.width, 'x', canvas.height);
+    
+    // Set white background for PDFs
+    context.fillStyle = 'white';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const renderTask = page.render({
+      canvasContext: context,
+      viewport: scaledViewport,
+      background: 'white'
+    });
+    
+    await renderTask.promise;
+    console.log('Page render completed successfully');
+    
+    // Verify canvas has content
+    const imageData = context.getImageData(0, 0, Math.min(10, canvas.width), Math.min(10, canvas.height));
+    const hasContent = imageData.data.some((value, index) => {
+      // Check if any pixel is not white (skip alpha channel)
+      if (index % 4 === 3) return false; // Skip alpha
+      return value !== 255;
+    });
+    
+    if (!hasContent) {
+      console.warn('Canvas appears to be blank after rendering');
+    }
+    
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+    console.log('Thumbnail generated, data URL length:', dataUrl.length);
+    
+    return dataUrl;
+  } catch (error) {
+    console.error('Error in renderPageThumbnail:', error);
+    throw error;
   }
-  
-  canvas.width = scaledViewport.width;
-  canvas.height = scaledViewport.height;
-  
-  await page.render({
-    canvasContext: context,
-    viewport: scaledViewport,
-  }).promise;
-  
-  return canvas.toDataURL('image/jpeg', 0.8);
 }

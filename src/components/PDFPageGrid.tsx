@@ -71,46 +71,56 @@ export default function PDFPageGrid({
   };
 
   const generateThumbnailsProgressively = async (pageList: PageThumbnail[]) => {
-    const batchSize = 4; // Generate 4 thumbnails at a time
+    const batchSize = 2; // Reduce concurrent processing to avoid overwhelming worker
     
     for (let i = 0; i < pageList.length; i += batchSize) {
       const batch = pageList.slice(i, i + batchSize);
-      const batchPromises = batch.map(page => generateSingleThumbnail(page.pageNumber));
       
-      try {
-        const batchResults = await Promise.allSettled(batchPromises);
+      // Process batch sequentially instead of in parallel
+      for (let j = 0; j < batch.length; j++) {
+        const pageIndex = i + j;
+        if (pageIndex >= pageList.length) break;
         
-        setPages(prevPages => {
-          const newPages = [...prevPages];
-          batchResults.forEach((result, index) => {
-            const pageIndex = i + index;
+        const page = batch[j];
+        
+        try {
+          const thumbnail = await generateSingleThumbnail(page.pageNumber);
+          
+          setPages(prevPages => {
+            const newPages = [...prevPages];
             if (pageIndex < newPages.length) {
-              if (result.status === 'fulfilled' && result.value) {
-                newPages[pageIndex] = {
-                  ...newPages[pageIndex],
-                  thumbnail: result.value,
-                  loading: false,
-                  error: false
-                };
-              } else {
-                newPages[pageIndex] = {
-                  ...newPages[pageIndex],
-                  thumbnail: null,
-                  loading: false,
-                  error: true
-                };
-              }
+              newPages[pageIndex] = {
+                ...newPages[pageIndex],
+                thumbnail: thumbnail,
+                loading: false,
+                error: !thumbnail
+              };
             }
+            return newPages;
           });
-          return newPages;
-        });
-      } catch (err) {
-        console.error('Error in batch thumbnail generation:', err);
+        } catch (err) {
+          console.error(`Error generating thumbnail for page ${page.pageNumber}:`, err);
+          setPages(prevPages => {
+            const newPages = [...prevPages];
+            if (pageIndex < newPages.length) {
+              newPages[pageIndex] = {
+                ...newPages[pageIndex],
+                thumbnail: null,
+                loading: false,
+                error: true
+              };
+            }
+            return newPages;
+          });
+        }
+        
+        // Small delay between individual thumbnails
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
-
-      // Small delay between batches to prevent overwhelming the browser
+      
+      // Longer delay between batches
       if (i + batchSize < pageList.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
   };
