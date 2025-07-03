@@ -7,32 +7,48 @@ import { copyFileSync, existsSync, mkdirSync } from "fs";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Copy PDF.js worker during build - always overwrite to ensure fresh copy
+  // Copy PDF.js worker during build - ensure it's always available
   const copyPDFWorker = () => {
     const workerSource = path.resolve(__dirname, 'node_modules/pdfjs-dist/build/pdf.worker.min.js');
     const workerDest = path.resolve(__dirname, 'public/pdf.worker.min.js');
+    
+    console.log('📋 Copying PDF.js worker...');
+    console.log('From:', workerSource);
+    console.log('To:', workerDest);
     
     // Ensure public directory exists
     const publicDir = path.resolve(__dirname, 'public');
     if (!existsSync(publicDir)) {
       try {
         mkdirSync(publicDir, { recursive: true });
-        console.log('Created public directory');
+        console.log('✅ Created public directory');
       } catch (error) {
-        console.warn('Failed to create public directory:', error);
+        console.error('❌ Failed to create public directory:', error);
+        return false;
       }
     }
     
     if (existsSync(workerSource)) {
       try {
         copyFileSync(workerSource, workerDest);
-        console.log('PDF.js worker copied successfully');
+        
+        // Verify the copied file is valid JavaScript
+        const content = require('fs').readFileSync(workerDest, 'utf8');
+        if (content.startsWith('<!DOCTYPE') || content.startsWith('<html')) {
+          console.error('❌ Worker file contains HTML instead of JavaScript!');
+          return false;
+        }
+        
+        console.log('✅ PDF.js worker copied and verified successfully');
+        return true;
       } catch (error) {
-        console.warn('Failed to copy PDF.js worker:', error);
+        console.error('❌ Failed to copy PDF.js worker:', error);
+        return false;
       }
     } else {
-      console.warn('PDF.js worker source not found:', workerSource);
+      console.warn('⚠️ PDF.js worker source not found:', workerSource);
       console.log('This is normal during initial install - worker will be available after dependencies are installed');
+      return false;
     }
   };
 
