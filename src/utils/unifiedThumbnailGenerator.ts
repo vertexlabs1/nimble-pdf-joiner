@@ -1,15 +1,20 @@
+import * as pdfjsLib from 'pdfjs-dist';
 import { supabase } from '@/integrations/supabase/client';
+
+// Set up PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 // Unified thumbnail cache
 const thumbnailCache = new Map<string, string>();
 const generationPromises = new Map<string, Promise<string | null>>();
 const failedAttempts = new Map<string, number>();
-const MAX_RETRIES = 3;
+const MAX_RETRIES = 2;
 
 interface ThumbnailOptions {
   width?: number;
   height?: number;
   quality?: number;
+  pageNumber?: number;
 }
 
 export interface ThumbnailResult {
@@ -20,23 +25,21 @@ export interface ThumbnailResult {
 }
 
 /**
- * Generate thumbnail for any PDF source - File object or stored file path
+ * Generate thumbnail for any PDF source using client-side PDF.js
  */
 export async function generateThumbnail(
   source: File | string,
   options: ThumbnailOptions = {},
   fileId?: string
 ): Promise<ThumbnailResult> {
-  const { width = 200, height = 260, quality = 0.8 } = options;
+  const { width = 200, height = 260, quality = 0.8, pageNumber = 1 } = options;
   
   let cacheKey: string;
-  let isFileObject = false;
   
   if (source instanceof File) {
-    isFileObject = true;
-    cacheKey = `file_${source.name}_${source.size}_${source.lastModified}_${width}x${height}`;
+    cacheKey = `file_${source.name}_${source.size}_${source.lastModified}_p${pageNumber}_${width}x${height}`;
   } else {
-    cacheKey = `stored_${source}_${width}x${height}`;
+    cacheKey = `stored_${source}_p${pageNumber}_${width}x${height}`;
   }
 
   // Check cache first
@@ -69,9 +72,9 @@ export async function generateThumbnail(
   }
 
   // Start new generation
-  const generationPromise = isFileObject
-    ? generateFromFile(source as File, { width, height, quality }, cacheKey)
-    : generateFromStoredFile(source as string, { width, height, quality }, cacheKey, fileId);
+  const generationPromise = source instanceof File
+    ? generateFromFile(source, { width, height, quality, pageNumber })
+    : generateFromStoredFile(source, { width, height, quality, pageNumber }, fileId);
 
   generationPromises.set(cacheKey, generationPromise);
 
@@ -79,16 +82,13 @@ export async function generateThumbnail(
     const result = await generationPromise;
     if (result) {
       thumbnailCache.set(cacheKey, result);
-      // Reset failed attempts on success
       failedAttempts.delete(cacheKey);
       return { success: true, data: result };
     } else {
-      // Increment failed attempts
       failedAttempts.set(cacheKey, attempts + 1);
       return { success: false, error: 'Failed to generate thumbnail', data: generatePlaceholder(width, height) };
     }
   } catch (error) {
-    // Increment failed attempts on error
     failedAttempts.set(cacheKey, attempts + 1);
     return { success: false, error: 'Failed to generate thumbnail', data: generatePlaceholder(width, height) };
   } finally {
@@ -97,42 +97,17 @@ export async function generateThumbnail(
 }
 
 /**
- * Generate thumbnail from File object using server-side processing
+ * Generate thumbnail from File object using client-side PDF.js
  */
 async function generateFromFile(
   file: File, 
-  options: ThumbnailOptions, 
-  cacheKey: string
+  options: ThumbnailOptions
 ): Promise<string | null> {
   try {
-    console.log('Generating thumbnail from File object:', file.name);
+    console.log('Generating thumbnail from File object using PDF.js:', file.name);
 
-    // Convert file to base64 for server processing
     const arrayBuffer = await file.arrayBuffer();
-    const base64Data = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-
-    // Call server-side thumbnail generation
-    const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
-      body: { 
-        fileData: base64Data,
-        filename: file.name,
-        width: options.width,
-        height: options.height,
-        quality: options.quality
-      }
-    });
-
-    if (error) {
-      console.error('Server thumbnail generation failed:', error);
-      return null;
-    }
-
-    if (data?.success && data?.thumbnailData) {
-      console.log('Server thumbnail generated successfully');
-      return data.thumbnailData;
-    }
-
-    return null;
+    return await renderPDFPage(arrayBuffer, options);
   } catch (error) {
     console.error('Error generating thumbnail from file:', error);
     return null;
@@ -145,7 +120,6 @@ async function generateFromFile(
 async function generateFromStoredFile(
   filePath: string,
   options: ThumbnailOptions,
-  cacheKey: string,
   fileId?: string
 ): Promise<string | null> {
   try {
@@ -160,30 +134,77 @@ async function generateFromStoredFile(
       }
     }
 
-    // Call server-side thumbnail generation
-    const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
-      body: { 
-        filePath,
-        fileId,
-        width: options.width,
-        height: options.height,
-        quality: options.quality
-      }
-    });
+    // Download file and generate thumbnail client-side
+    const { data, error } = await supabase.storage
+      .from('user-files')
+      .download(filePath);
 
-    if (error) {
-      console.error('Server thumbnail generation failed:', error);
+    if (error || !data) {
+      console.error('Error downloading file:', error);
       return null;
     }
 
-    if (data?.success && data?.thumbnailData) {
-      console.log('Server thumbnail generated successfully');
-      return data.thumbnailData;
-    }
-
-    return null;
+    const arrayBuffer = await data.arrayBuffer();
+    return await renderPDFPage(arrayBuffer, options);
   } catch (error) {
     console.error('Error generating thumbnail from stored file:', error);
+    return null;
+  }
+}
+
+/**
+ * Render PDF page to canvas using PDF.js
+ */
+async function renderPDFPage(
+  arrayBuffer: ArrayBuffer,
+  options: ThumbnailOptions
+): Promise<string | null> {
+  try {
+    const { width = 200, height = 260, quality = 0.8, pageNumber = 1 } = options;
+
+    // Load PDF document
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    if (pdf.numPages < pageNumber) {
+      console.warn(`Page ${pageNumber} not found, using page 1`);
+    }
+
+    const page = await pdf.getPage(Math.min(pageNumber, pdf.numPages));
+    
+    // Calculate scale to fit desired dimensions
+    const viewport = page.getViewport({ scale: 1 });
+    const scaleX = width / viewport.width;
+    const scaleY = height / viewport.height;
+    const scale = Math.min(scaleX, scaleY);
+    
+    const scaledViewport = page.getViewport({ scale });
+
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    if (!context) {
+      throw new Error('Could not create canvas context');
+    }
+
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
+
+    // Render page to canvas
+    await page.render({
+      canvasContext: context,
+      viewport: scaledViewport
+    }).promise;
+
+    // Convert to data URL
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    
+    // Cleanup
+    page.cleanup();
+    
+    return dataUrl;
+  } catch (error) {
+    console.error('Error rendering PDF page:', error);
     return null;
   }
 }

@@ -129,7 +129,11 @@ export default function PDFPageGrid({
     console.log(`PDFPageGrid: Starting thumbnail generation for page ${pageNumber}`);
     
     try {
-      const result = await generateThumbnail(file, { width: 160, height: 208 });
+      const result = await generateThumbnail(file, { 
+        width: 160, 
+        height: 208, 
+        pageNumber: pageNumber 
+      });
       const thumbnailData = result.success ? result.data : null;
       console.log(`PDFPageGrid: Thumbnail generation ${thumbnailData ? 'succeeded' : 'failed'} for page ${pageNumber}`);
       return thumbnailData;

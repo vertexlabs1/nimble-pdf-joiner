@@ -77,7 +77,8 @@ export default function UnifiedPDFThumbnail({
         { 
           width: dimensions.width, 
           height: dimensions.height,
-          quality: 0.8 
+          quality: 0.8,
+          pageNumber: 1 // Always use first page for file thumbnails
         },
         fileId
       );
