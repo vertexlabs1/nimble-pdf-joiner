@@ -136,45 +136,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (error) {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        setLoading(false);
+      }
+      
+      return { error };
+    } catch (error) {
       setLoading(false);
+      return { error: { message: 'Network error occurred' } };
     }
-    
-    return { error };
   };
 
   const signUp = async (email: string, password: string) => {
     setLoading(true);
     
-    const redirectUrl = `${window.location.origin}/dashboard`;
-    
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl
-      }
-    });
-    
-    // Always reset loading state after signup attempt
-    setLoading(false);
-    
-    return { error };
+    try {
+      const redirectUrl = `${window.location.origin}/dashboard`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl
+        }
+      });
+      
+      setLoading(false);
+      return { error };
+    } catch (error) {
+      setLoading(false);
+      return { error: { message: 'Network error occurred' } };
+    }
   };
 
   const resetPassword = async (email: string) => {
-    const redirectUrl = `${window.location.origin}/login?reset=true`;
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectUrl
-    });
-    
-    return { error };
+    try {
+      const redirectUrl = `${window.location.origin}/login?reset=true`;
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl
+      });
+      
+      return { error };
+    } catch (error) {
+      return { error: { message: 'Network error occurred' } };
+    }
   };
 
   const signOut = async () => {
