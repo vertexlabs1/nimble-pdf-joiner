@@ -26,14 +26,18 @@ serve(async (req) => {
     let pdfDataUrl = pdfUrl;
 
     // If we have filePath, get the signed URL
-    if (filePath && !pdfUrl) {
-      const { data: { signedUrl } } = await supabaseClient.storage
+    if (filePath) {
+      console.log('Getting signed URL for filePath:', filePath);
+      const { data: { signedUrl }, error: urlError } = await supabaseClient.storage
         .from('user_files')
         .createSignedUrl(filePath, 3600); // 1 hour expiry
       
-      if (!signedUrl) {
-        throw new Error('Could not get signed URL for PDF');
+      if (urlError || !signedUrl) {
+        console.error('Could not get signed URL:', urlError);
+        throw new Error(`Could not get signed URL for PDF: ${urlError?.message || 'Unknown error'}`);
       }
+      
+      console.log('Got signed URL:', signedUrl);
       pdfDataUrl = signedUrl;
     }
 
@@ -41,28 +45,49 @@ serve(async (req) => {
       throw new Error('No PDF URL provided');
     }
 
+    // Validate URL accessibility
+    console.log('Testing PDF URL accessibility:', pdfDataUrl);
+    const testResponse = await fetch(pdfDataUrl, { method: 'HEAD' });
+    if (!testResponse.ok) {
+      throw new Error(`PDF URL not accessible: ${testResponse.status} ${testResponse.statusText}`);
+    }
+    console.log('PDF URL is accessible, proceeding with thumbnail generation');
+
     // Generate actual PDF thumbnail using Puppeteer
+    console.log('Launching Puppeteer browser');
     const browser = await puppeteer.launch({
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: [
+        '--no-sandbox', 
+        '--disable-setuid-sandbox',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ],
       headless: true
     });
 
     try {
+      console.log('Creating new page');
       const page = await browser.newPage();
       
       // Set viewport size
+      console.log('Setting viewport size:', { width: width * 2, height: height * 2 });
       await page.setViewport({ width: width * 2, height: height * 2 });
       
       // Navigate to PDF with specific page
-      await page.goto(`${pdfDataUrl}#page=${pageNumber}`, {
+      const pdfPageUrl = `${pdfDataUrl}#page=${pageNumber}`;
+      console.log('Navigating to PDF page:', pdfPageUrl);
+      
+      await page.goto(pdfPageUrl, {
         waitUntil: 'networkidle0',
         timeout: 30000
       });
 
+      console.log('Waiting for PDF to render');
       // Wait a bit for PDF to fully render
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
 
       // Take screenshot
+      console.log('Taking screenshot');
       const screenshot = await page.screenshot({
         type: 'png',
         quality: Math.round(quality * 100),
@@ -75,6 +100,7 @@ serve(async (req) => {
         }
       });
 
+      console.log('Screenshot taken, closing browser');
       await browser.close();
 
       // Convert to base64

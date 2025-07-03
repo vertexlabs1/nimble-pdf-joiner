@@ -52,23 +52,44 @@ export default function PDFPageGrid({
   };
 
   const generateThumbnailsForPages = async (pageCount: number) => {
-    // Create object URL for the PDF file to send to edge function
-    const pdfUrl = URL.createObjectURL(file);
+    // Upload file to temporary storage to get a server-accessible URL
+    let tempFilePath: string | null = null;
     
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Upload to temp storage
+      const timestamp = Date.now();
+      tempFilePath = `temp/${user.id}/${timestamp}_${file.name}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('user_files')
+        .upload(tempFilePath, file, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Failed to upload temp file:', uploadError);
+        return;
+      }
+
       // Generate thumbnails for first few pages in parallel
       const thumbnailPromises = Array.from({ length: pageCount }, (_, index) => 
-        generateThumbnail(pdfUrl, index + 1)
+        generateThumbnail(tempFilePath!, index + 1)
       );
       
       await Promise.all(thumbnailPromises);
     } finally {
-      // Clean up object URL
-      URL.revokeObjectURL(pdfUrl);
+      // Clean up temp file
+      if (tempFilePath) {
+        supabase.storage.from('user_files').remove([tempFilePath]);
+      }
     }
   };
 
-  const generateThumbnail = async (pdfUrl: string, pageNumber: number) => {
+  const generateThumbnail = async (filePath: string, pageNumber: number) => {
     if (thumbnails[pageNumber] || generatingThumbnails[pageNumber]) {
       return;
     }
@@ -78,7 +99,7 @@ export default function PDFPageGrid({
     try {
       const { data, error } = await supabase.functions.invoke('generate-thumbnail', {
         body: {
-          pdfUrl,
+          filePath,
           pageNumber,
           width: 200,
           height: 260

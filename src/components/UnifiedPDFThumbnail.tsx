@@ -71,20 +71,36 @@ export default function UnifiedPDFThumbnail({
     setError(false);
     
     try {
-      let pdfUrl: string;
+      let tempFilePath: string | null = null;
       
       if (source instanceof File) {
-        // Create object URL for File objects
-        pdfUrl = URL.createObjectURL(source);
-      } else {
-        // For stored files, use the file path
-        pdfUrl = source;
+        // Upload file to temporary storage for server access
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setError(true);
+          return;
+        }
+
+        const timestamp = Date.now();
+        tempFilePath = `temp/${user.id}/${timestamp}_${source.name}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('user_files')
+          .upload(tempFilePath, source, {
+            contentType: 'application/pdf',
+            upsert: true
+          });
+
+        if (uploadError) {
+          console.error('Failed to upload temp file:', uploadError);
+          setError(true);
+          return;
+        }
       }
 
       const { data, error: funcError } = await supabase.functions.invoke('generate-thumbnail', {
         body: {
-          pdfUrl: source instanceof File ? pdfUrl : undefined,
-          filePath: typeof source === 'string' ? source : undefined,
+          filePath: source instanceof File ? tempFilePath : source,
           fileId,
           filename: displayName,
           width: dimensions.width,
@@ -92,9 +108,9 @@ export default function UnifiedPDFThumbnail({
         }
       });
 
-      // Clean up object URL if we created one
-      if (source instanceof File) {
-        URL.revokeObjectURL(pdfUrl);
+      // Clean up temp file
+      if (tempFilePath) {
+        supabase.storage.from('user_files').remove([tempFilePath]);
       }
 
       if (funcError) {
