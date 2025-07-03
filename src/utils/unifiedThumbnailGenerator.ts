@@ -161,18 +161,22 @@ async function renderPDFPage(
   
   try {
     const { width = 200, height = 260, quality = 0.8, pageNumber = 1 } = options;
-    console.log(`Starting PDF rendering for page ${pageNumber}, dimensions: ${width}x${height}`);
-
-    // PDF.js worker is pre-configured in pdfConfig.ts
+    console.log(`🔧 Starting PDF rendering for page ${pageNumber}, dimensions: ${width}x${height}`);
+    console.log(`📍 Worker source: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
     // Validate inputs
     if (!arrayBuffer || arrayBuffer.byteLength === 0) {
       throw new Error('Invalid ArrayBuffer provided');
     }
 
-    // Load PDF document with timeout
+    console.log(`📄 Processing PDF buffer: ${arrayBuffer.byteLength} bytes`);
+
+    // Load PDF document with enhanced configuration and timeout
     const loadingTask = pdfjsLib.getDocument({ 
       data: arrayBuffer,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      useSystemFonts: true,
       cMapUrl: `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/cmaps/`,
       cMapPacked: true
     });
