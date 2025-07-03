@@ -1,13 +1,6 @@
 import { PDFDocument } from 'pdf-lib';
 import { PDFPageInfo, PDFFileWithPages } from '@/types/pdf';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Set up PDF.js worker
-try {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-} catch (error) {
-  console.warn('Failed to set PDF.js worker source:', error);
-}
+import { pdfjsLib, ensureWorkerReady } from './pdfConfig';
 
 // Cache for loaded PDFs to avoid reloading
 const pdfCache = new Map<string, any>();
@@ -69,6 +62,13 @@ export const generatePageThumbnails = async (file: File): Promise<PDFPageInfo[]>
   }
   
   try {
+    // Ensure worker is ready before processing
+    const workerReady = await ensureWorkerReady();
+    if (!workerReady) {
+      console.error('PDF.js worker failed to initialize for:', file.name);
+      return [];
+    }
+
     const arrayBuffer = await file.arrayBuffer();
     let pdfDocument = pdfCache.get(cacheKey);
     

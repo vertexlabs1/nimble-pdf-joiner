@@ -1,60 +1,76 @@
 
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Force CDN worker for development to avoid local serving issues
-const setWorkerSource = () => {
-  const corsFreeCdn = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-  const localWorker = '/pdf.worker.min.js';
-  
-  console.log('PDF.js initialized with version:', pdfjsLib.version);
-  console.log('Primary worker source (CDN):', corsFreeCdn);
-  console.log('Fallback worker source (local):', localWorker);
-  
-  // Start with CDN worker to avoid local serving issues
-  pdfjsLib.GlobalWorkerOptions.workerSrc = corsFreeCdn;
-  console.log('✅ Using CDN PDF.js worker to avoid CORS/serving issues');
-  
-  // Test local worker in background for future use
-  testLocalWorker(localWorker, corsFreeCdn);
-};
+// CDN worker URLs with fallbacks for maximum reliability
+const CDN_WORKERS = [
+  `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
+  `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
+  `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+];
 
-// Test local worker content validation
-const testLocalWorker = async (localWorker: string, fallback: string) => {
+let workerInitialized = false;
+let workerInitPromise: Promise<boolean> | null = null;
+
+// Test and validate worker URL
+const testWorkerUrl = async (workerUrl: string): Promise<boolean> => {
   try {
-    console.log('🔧 Testing local worker content...');
-    const response = await fetch(localWorker);
+    console.log(`🔧 Testing worker URL: ${workerUrl}`);
+    
+    const response = await fetch(workerUrl, { 
+      method: 'HEAD',
+      mode: 'cors'
+    });
     
     if (!response.ok) {
-      console.warn('❌ Local worker fetch failed:', response.status, response.statusText);
-      return;
+      console.warn(`❌ Worker URL failed: ${response.status} ${response.statusText}`);
+      return false;
     }
     
-    const contentType = response.headers.get('content-type') || '';
-    console.log('📄 Local worker content-type:', contentType);
-    
-    const text = await response.text();
-    const first100 = text.substring(0, 100);
-    console.log('📝 Local worker content preview:', first100);
-    
-    if (text.startsWith('<!DOCTYPE') || text.startsWith('<html') || text.includes('<html>')) {
-      console.error('❌ CRITICAL: Local worker contains HTML instead of JavaScript!');
-      console.error('Content preview:', first100);
-      console.log('🔄 Keeping CDN worker as primary');
-      return;
-    }
-    
-    if (text.includes('var Module') || text.includes('self.pdfjsWorker') || text.includes('importScripts')) {
-      console.log('✅ Local worker contains valid JavaScript - but using CDN for now');
-    } else {
-      console.warn('⚠️ Local worker content may not be valid PDF.js worker');
-    }
-    
+    console.log(`✅ Worker URL validated: ${workerUrl}`);
+    return true;
   } catch (error) {
-    console.error('❌ Error testing local worker:', error);
+    console.warn(`❌ Worker URL test failed:`, error);
+    return false;
   }
 };
 
-// Initialize worker source
-setWorkerSource();
+// Initialize PDF.js worker with fallback CDN URLs
+const initializeWorker = async (): Promise<boolean> => {
+  if (workerInitialized) {
+    return true;
+  }
+
+  if (workerInitPromise) {
+    return workerInitPromise;
+  }
+
+  workerInitPromise = (async () => {
+    console.log('🚀 Initializing PDF.js worker...');
+    console.log('PDF.js version:', pdfjsLib.version);
+    
+    for (const workerUrl of CDN_WORKERS) {
+      const isValid = await testWorkerUrl(workerUrl);
+      if (isValid) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
+        console.log(`✅ PDF.js worker initialized with: ${workerUrl}`);
+        workerInitialized = true;
+        return true;
+      }
+    }
+    
+    console.error('❌ All PDF.js worker URLs failed - PDF operations will not work');
+    return false;
+  })();
+
+  return workerInitPromise;
+};
+
+// Ensure worker is initialized before any PDF operations
+export const ensureWorkerReady = async (): Promise<boolean> => {
+  return initializeWorker();
+};
+
+// Initialize worker immediately
+initializeWorker();
 
 export { pdfjsLib };

@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { pdfjsLib } from './pdfConfig';
+import { pdfjsLib, ensureWorkerReady } from './pdfConfig';
 
 // Unified thumbnail cache
 const thumbnailCache = new Map<string, string>();
@@ -162,6 +162,13 @@ async function renderPDFPage(
   try {
     const { width = 200, height = 260, quality = 0.8, pageNumber = 1 } = options;
     console.log(`🔧 Starting PDF rendering for page ${pageNumber}, dimensions: ${width}x${height}`);
+    
+    // Ensure worker is ready before proceeding
+    const workerReady = await ensureWorkerReady();
+    if (!workerReady) {
+      throw new Error('PDF.js worker failed to initialize');
+    }
+    
     console.log(`📍 Worker source: ${pdfjsLib.GlobalWorkerOptions.workerSrc}`);
 
     // Validate inputs
