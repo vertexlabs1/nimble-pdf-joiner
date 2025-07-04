@@ -111,7 +111,6 @@ export default function WatermarkTool({ file, onFileSelect }: WatermarkToolProps
           font,
           color: rgb(r, g, b),
           opacity: opacity[0],
-          rotate: { angle: rotation * (180 / Math.PI) },
         });
       });
 
