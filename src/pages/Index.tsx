@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { PDFUploader } from '@/components/PDFUploader';
 import { FileList } from '@/components/FileList';
 import { MergeButton } from '@/components/MergeButton';
+import { FilenameInput } from '@/components/FilenameInput';
 import { SecurityCallout } from '@/components/SecurityCallout';
 import { SecurityInfoDialog } from '@/components/SecurityInfoDialog';
 import { HowItWorks } from '@/components/HowItWorks';
@@ -21,6 +22,7 @@ const Index = () => {
   const [enhancedFiles, setEnhancedFiles] = useState<PDFFileWithPages[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [customFilename, setCustomFilename] = useState('merged-document.pdf');
 
   // Simple function to get basic PDF info using pdf-lib
   const getBasicFileInfo = async (file: File): Promise<PDFFileWithPages> => {
@@ -95,12 +97,23 @@ const Index = () => {
 
   const handleFilesAdded = (newFiles: File[]) => {
     console.log('Adding new files:', newFiles.map(f => f.name));
-    setFiles(prevFiles => [...prevFiles, ...newFiles]);
+    const updatedFiles = [...files, ...newFiles];
+    setFiles(updatedFiles);
+    // Update filename when files are added
+    if (updatedFiles.length > 0) {
+      const defaultName = `merged-${updatedFiles[0].name.replace('.pdf', '')}.pdf`;
+      setCustomFilename(defaultName);
+    }
   };
 
   const handleReorder = (newFiles: File[]) => {
     console.log('Reordering files:', newFiles.map(f => f.name));
     setFiles(newFiles);
+    // Update filename when files are reordered
+    if (newFiles.length > 0) {
+      const defaultName = `merged-${newFiles[0].name.replace('.pdf', '')}.pdf`;
+      setCustomFilename(defaultName);
+    }
   };
 
   const handleRemove = (index: number) => {
@@ -113,6 +126,7 @@ const Index = () => {
     setFiles([]);
     setEnhancedFiles([]);
     setIsProcessing(false);
+    setCustomFilename('merged-document.pdf');
   };
 
   return (
@@ -230,6 +244,18 @@ const Index = () => {
             </section>
           )}
 
+          {/* Filename Input */}
+          {files.length >= 2 && !isProcessing && (
+            <section>
+              <Card className="p-6 bg-white/80 border border-gray-200 backdrop-blur-sm shadow-lg">
+                <FilenameInput
+                  defaultFilename={customFilename}
+                  onFilenameChange={setCustomFilename}
+                />
+              </Card>
+            </section>
+          )}
+
           {/* Merge Button */}
           {files.length >= 2 && !isProcessing && (
             <section className="text-center">
@@ -237,6 +263,7 @@ const Index = () => {
                 files={files}
                 isLoading={isLoading}
                 setIsLoading={setIsLoading}
+                customFilename={customFilename}
               />
             </section>
           )}

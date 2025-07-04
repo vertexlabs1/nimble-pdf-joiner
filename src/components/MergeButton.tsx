@@ -12,13 +12,13 @@ interface MergeButtonProps {
   files: File[];
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  customFilename: string;
 }
 
-export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps) => {
+export const MergeButton = ({ files, isLoading, setIsLoading, customFilename }: MergeButtonProps) => {
   const [mergeResult, setMergeResult] = useState<MergeResult | null>(null);
   const [showEncryptedDialog, setShowEncryptedDialog] = useState(false);
   const [encryptedFiles, setEncryptedFiles] = useState<EncryptedFileInfo[]>([]);
-  const [customFilename, setCustomFilename] = useState('merged-document.pdf');
   const { toast } = useToast();
 
   const performMerge = async (includeEncrypted: boolean = true) => {
@@ -41,10 +41,7 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
           console.warn('Analytics logging failed silently:', err);
         });
 
-        const defaultName = files.length > 0 
-          ? `merged-${files[0].name.replace('.pdf', '')}.pdf`
-          : 'merged-document.pdf';
-        setCustomFilename(defaultName);
+        // Filename is now managed by parent component
 
         if (result.encryptedPagesWarning) {
           toast({
@@ -132,10 +129,6 @@ export const MergeButton = ({ files, isLoading, setIsLoading }: MergeButtonProps
   const handleCancelEncrypted = () => {
     setShowEncryptedDialog(false);
     performMerge(false);
-  };
-
-  const handleFilenameChange = (newFilename: string) => {
-    setCustomFilename(newFilename);
   };
 
   const getDisplayFilename = () => {
