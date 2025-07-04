@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { listUserFiles, downloadFile, deleteFile, type UserStorageFile } from '@/utils/storageAPI';
+import { listUserFiles, downloadFile, deleteFile, uploadFiles, type UserStorageFile } from '@/utils/storageAPI';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useFileOperations() {
@@ -8,6 +8,7 @@ export function useFileOperations() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -93,13 +94,46 @@ export function useFileOperations() {
     }
   };
 
+  const handleUpload = async (fileList: FileList) => {
+    setUploading(true);
+    try {
+      const filesArray = Array.from(fileList);
+      const result = await uploadFiles(filesArray);
+      
+      if (result.success && result.uploadedFiles) {
+        setFiles([...result.uploadedFiles, ...files]);
+        toast({
+          title: 'Upload successful',
+          description: `${result.uploadedFiles.length} file(s) uploaded successfully`,
+        });
+      } else {
+        toast({
+          title: 'Upload failed',
+          description: result.error || 'Could not upload files',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      toast({
+        title: 'Upload failed',
+        description: 'An unexpected error occurred while uploading files',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return {
     files,
     loading,
     downloading,
     deleting,
+    uploading,
     loadFiles,
     handleDownload,
     handleDelete,
+    handleUpload,
   };
 }

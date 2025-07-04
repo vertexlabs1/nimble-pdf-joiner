@@ -170,6 +170,76 @@ export async function deleteFile(filePath: string): Promise<{ success: boolean; 
 }
 
 /**
+ * Upload files to user storage
+ */
+export async function uploadFiles(files: File[]): Promise<{ success: boolean; error?: string; uploadedFiles?: UserStorageFile[] }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    const uploadedFiles: UserStorageFile[] = [];
+    
+    for (const file of files) {
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        return { success: false, error: `File "${file.name}" is not a PDF` };
+      }
+
+      // Validate file size (10MB limit)
+      if (file.size > 10 * 1024 * 1024) {
+        return { success: false, error: `File "${file.name}" exceeds 10MB limit` };
+      }
+
+      // Create unique filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `${timestamp}_${file.name}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('user_files')
+        .upload(filePath, file, {
+          contentType: 'application/pdf',
+          upsert: false
+        });
+
+      if (error) {
+        console.error('Error uploading file:', error);
+        return { success: false, error: `Failed to upload "${file.name}": ${error.message}` };
+      }
+
+      // Create UserStorageFile object
+      const uploadedFile: UserStorageFile = {
+        id: filePath,
+        name: fileName,
+        metadata: {
+          eTag: '',
+          size: file.size,
+          mimetype: file.type,
+          cacheControl: '',
+          lastModified: new Date().toISOString(),
+          contentLength: file.size,
+          httpStatusCode: 200
+        },
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        displayName: file.name,
+        fileSize: file.size,
+        lastModified: new Date()
+      };
+
+      uploadedFiles.push(uploadedFile);
+    }
+
+    return { success: true, uploadedFiles };
+  } catch (error) {
+    console.error('Error uploading files:', error);
+    return { success: false, error: 'Upload failed' };
+  }
+}
+
+/**
  * Clear the signed URL cache
  */
 export function clearSignedUrlCache(): void {

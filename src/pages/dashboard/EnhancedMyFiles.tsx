@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileText, Upload, FolderOpen, LayoutGrid, LayoutList, Trash2, Download, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useFileOperations } from '@/hooks/useFileOperations';
 import { useToast } from '@/hooks/use-toast';
 import FileGridSkeleton from '@/components/FileGridSkeleton';
-import PDFThumbnail from '@/components/PDFThumbnail';
+import PDFThumbnailPreview from '@/components/PDFThumbnailPreview';
 import PDFViewer from '@/components/PDFViewer';
 import { Card } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -17,6 +16,7 @@ export default function EnhancedMyFiles() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedFile, setSelectedFile] = useState<UserStorageFile | null>(null);
   const [viewingFile, setViewingFile] = useState<{ file: UserStorageFile; url: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { 
@@ -24,9 +24,11 @@ export default function EnhancedMyFiles() {
     loading, 
     downloading, 
     deleting, 
+    uploading,
     loadFiles, 
     handleDownload, 
-    handleDelete 
+    handleDelete,
+    handleUpload 
   } = useFileOperations();
 
   useEffect(() => {
@@ -79,6 +81,21 @@ export default function EnhancedMyFiles() {
     });
   };
 
+  const handleFileUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      handleUpload(files);
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -109,12 +126,22 @@ export default function EnhancedMyFiles() {
               <LayoutList className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
-          <Button asChild className="flex items-center gap-2">
-            <NavLink to="/dashboard/merge">
-              <Upload className="h-4 w-4" />
-              Create New File
-            </NavLink>
+          <Button 
+            onClick={handleFileUpload} 
+            disabled={uploading}
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            {uploading ? 'Uploading...' : 'Upload Files'}
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf"
+            multiple
+            onChange={handleFileChange}
+            className="hidden"
+          />
         </div>
       </div>
 
@@ -126,148 +153,70 @@ export default function EnhancedMyFiles() {
             </div>
             <h3 className="text-lg font-semibold text-card-foreground">No files yet</h3>
             <p className="text-muted-foreground">
-              Use the Merge tool to create and save your first PDF document
+              Upload your first PDF documents to get started
             </p>
-            <Button asChild className="mt-4">
-              <NavLink to="/dashboard/merge">
-                <Upload className="h-4 w-4 mr-2" />
-                Go to Merge Tool
-              </NavLink>
+            <Button onClick={handleFileUpload} className="mt-4">
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Files
             </Button>
           </div>
         </div>
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-          {files.map((file) => (
-            <Card key={file.id} className="p-4 space-y-3 hover:shadow-md transition-shadow">
-              <div className="relative group">
-                <PDFThumbnail
-                  file={file.signedUrl || ''}
-                  onClick={() => handleViewFile(file)}
-                  size="medium"
-                  className="transition-transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <Eye className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              
-              <div className="space-y-1">
-                <h3 className="font-medium text-sm truncate" title={file.displayName}>
-                  {file.displayName}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(file.fileSize || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(file.created_at)}
-                </p>
-              </div>
-
-              <div className="flex gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleViewFile(file)}
-                  className="flex-1"
-                >
-                  <Eye className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDownload(file)}
-                  disabled={downloading === file.id}
-                  className="flex-1"
-                >
-                  <Download className="h-3 w-3" />
-                </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={deleting === file.id}
-                      className="flex-1"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete File</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete "{file.displayName}"? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(file)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {files.map((file) => (
-            <Card key={file.id} className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="relative group cursor-pointer" onClick={() => handleViewFile(file)}>
-                  <PDFThumbnail
-                    file={file.signedUrl || ''}
-                    size="small"
-                    className="transition-transform group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <Eye className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium truncate" title={file.displayName}>
-                    {file.displayName}
-                  </h3>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                    <span>{formatFileSize(file.fileSize || 0)}</span>
-                    <span>{formatDate(file.created_at)}</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+          {files.map((file) => {
+            const filePath = user ? `${user.id}/${file.name}` : '';
+            
+            return (
+              <Card key={file.id} className="group relative overflow-hidden hover:shadow-md transition-all duration-200">
+                <div className="p-4 space-y-3">
+                  <PDFThumbnailPreview
+                    filePath={filePath}
+                    fileName={file.displayName}
                     onClick={() => handleViewFile(file)}
+                  />
+                  
+                  <div className="space-y-1">
+                    <h3 className="font-medium text-sm truncate" title={file.displayName}>
+                      {file.displayName.replace(/\.[^/.]+$/, "")}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(file.fileSize || 0)} • {formatDate(file.created_at).split(',')[0]}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Hover overlay with actions */}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1">
+                  <Button
+                    size="icon"
+                    variant="secondary"
+                    className="h-8 w-8 bg-background/80 hover:bg-background border-0 shadow-lg backdrop-blur-sm"
+                    onClick={() => handleViewFile(file)}
+                    title="View"
                   >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View
+                    <Eye className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant="outline"
-                    size="sm"
+                    size="icon"
+                    variant="secondary"
+                    className="h-8 w-8 bg-background/80 hover:bg-background border-0 shadow-lg backdrop-blur-sm"
                     onClick={() => handleDownload(file)}
                     disabled={downloading === file.id}
+                    title="Download"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    {downloading === file.id ? 'Downloading...' : 'Download'}
+                    <Download className="h-4 w-4" />
                   </Button>
+                  
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
-                        variant="outline"
-                        size="sm"
+                        size="icon"
+                        variant="secondary"
+                        className="h-8 w-8 bg-background/80 hover:bg-destructive/10 border-0 shadow-lg backdrop-blur-sm text-destructive hover:text-destructive"
                         disabled={deleting === file.id}
+                        title="Delete"
                       >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -289,9 +238,88 @@ export default function EnhancedMyFiles() {
                     </AlertDialogContent>
                   </AlertDialog>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {files.map((file) => {
+            const filePath = user ? `${user.id}/${file.name}` : '';
+            
+            return (
+              <Card key={file.id} className="p-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative group cursor-pointer w-20 h-26" onClick={() => handleViewFile(file)}>
+                    <PDFThumbnailPreview
+                      filePath={filePath}
+                      fileName={file.displayName}
+                      className="w-20 h-26"
+                    />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate" title={file.displayName}>
+                      {file.displayName.replace(/\.[^/.]+$/, "")}
+                    </h3>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                      <span>{formatFileSize(file.fileSize || 0)}</span>
+                      <span>{formatDate(file.created_at)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewFile(file)}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDownload(file)}
+                      disabled={downloading === file.id}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      {downloading === file.id ? 'Downloading...' : 'Download'}
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={deleting === file.id}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete File</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete "{file.displayName}"? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(file)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
