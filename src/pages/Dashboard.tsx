@@ -4,7 +4,7 @@ import { Routes, Route } from 'react-router-dom';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import DashboardHome from './dashboard/DashboardHome';
-import MyFiles from './dashboard/MyFiles';
+import EnhancedMyFiles from './dashboard/EnhancedMyFiles';
 import ToolPage from './dashboard/ToolPage';
 import AdminPanel from './dashboard/AdminPanel';
 import { DashboardMergeTool } from '@/components/DashboardMergeTool';
@@ -16,7 +16,7 @@ export default function Dashboard() {
     <DashboardLayout>
       <Routes>
         <Route path="/" element={<DashboardHome />} />
-        <Route path="/files" element={<MyFiles />} />
+        <Route path="/files" element={<EnhancedMyFiles />} />
         <Route path="/merge" element={<DashboardMergeTool />} />
         <Route path="/split" element={<DashboardSplitTool />} />
         <Route 
