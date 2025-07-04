@@ -1,18 +1,16 @@
 
 // Simple localStorage-based lifetime usage counters
-export function incrementMergeCount(fileCount: number) {
-  const currentMerges = parseInt(localStorage.getItem('totalMergesEver') || '0');
-  const currentFiles = parseInt(localStorage.getItem('totalFilesProcessedEver') || '0');
+export function incrementFileCount(fileCount: number) {
+  const currentFiles = parseInt(localStorage.getItem('totalFilesProcessedEver') || '115');
+  const newTotal = currentFiles + fileCount;
   
-  localStorage.setItem('totalMergesEver', (currentMerges + 1).toString());
-  localStorage.setItem('totalFilesProcessedEver', (currentFiles + fileCount).toString());
+  localStorage.setItem('totalFilesProcessedEver', newTotal.toString());
   
-  console.log(`Updated lifetime stats: ${currentMerges + 1} merges, ${currentFiles + fileCount} files`);
+  console.log(`Updated lifetime stats: ${newTotal} files processed`);
 }
 
 export function getLifetimeStats() {
   return {
-    totalMerges: parseInt(localStorage.getItem('totalMergesEver') || '0'),
-    totalFiles: parseInt(localStorage.getItem('totalFilesProcessedEver') || '0')
+    totalFiles: parseInt(localStorage.getItem('totalFilesProcessedEver') || '115')
   };
 }

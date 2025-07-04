@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { mergePDFs, downloadBlob, MergeResult, detectEncryptedFiles, EncryptedFileInfo } from '@/utils/pdfUtils';
-import { incrementMergeCount } from '@/utils/analytics';
+import { incrementFileCount } from '@/utils/analytics';
 import { EncryptedPDFDialog } from '@/components/EncryptedPDFDialog';
 import { MergeSuccess } from '@/components/MergeSuccess';
 import { MergeError } from '@/components/MergeError';
@@ -33,8 +33,8 @@ export const MergeButton = ({ files, isLoading, setIsLoading, customFilename }: 
       setMergeResult(result);
 
       if (result.success) {
-        // Increment lifetime counters for successful merges
-        incrementMergeCount(files.length);
+        // Track the files processed
+        incrementFileCount(files.length);
 
         // Filename is now managed by parent component
 

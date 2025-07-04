@@ -1,5 +1,5 @@
 
-import { Info, Shield, Lock, Eye, Server, Monitor } from 'lucide-react';
+import { Info, Shield, Lock, Eye, Server, Monitor, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -90,6 +90,19 @@ export const SecurityInfoDialog = () => {
                   </ul>
                 </div>
               </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-gray-600" />
+                Usage Counter (*)
+              </h3>
+              <p className="text-sm text-gray-600">
+                The files processed counter shown on our site is a simple browser-based 
+                counter that helps show community engagement. It does not track any user 
+                data, document content, or personal information. It's purely a local count 
+                for motivational purposes.
+              </p>
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">

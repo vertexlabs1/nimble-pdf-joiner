@@ -165,12 +165,9 @@ const Index = () => {
         {/* Security Callout */}
         <div className="max-w-3xl mx-auto mb-8">
           <SecurityCallout />
-        </div>
-
-        {/* Usage Statistics Section */}
-        <div className="max-w-3xl mx-auto mb-8">
           <UsageStats />
         </div>
+
 
         {/* Main Content */}
         <main className="max-w-4xl mx-auto space-y-8">
