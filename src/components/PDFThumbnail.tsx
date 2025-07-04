@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Document, Page } from 'react-pdf';
 import { FileText } from 'lucide-react';
 import { PDF_CONFIG } from '@/lib/pdfConfig';
-import '@/lib/pdfConfig';
+import '../pdf-styles.css';
 
 interface PDFThumbnailProps {
   file: File | string;

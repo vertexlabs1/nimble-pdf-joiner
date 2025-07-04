@@ -4,7 +4,8 @@ import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Download } from 'lucide-rea
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import '@/lib/pdfConfig';
+import { PDF_CONFIG } from '@/lib/pdfConfig';
+import '../pdf-styles.css';
 
 interface PDFViewerProps {
   file: File | string;

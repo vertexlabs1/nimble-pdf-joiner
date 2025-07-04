@@ -13,6 +13,7 @@ import Waitlist from "./pages/Waitlist";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import "./pdf-styles.css";
 
 const queryClient = new QueryClient();
 
