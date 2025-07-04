@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Document, Page } from 'react-pdf';
 import { FileText, Eye } from 'lucide-react';
-import { getSignedUrl } from '@/utils/storageAPI';
+import { fetchPDFAsBlob } from '@/utils/storageAPI';
 import '../pdf-styles.css';
 
 interface PDFThumbnailPreviewProps {
@@ -17,23 +17,23 @@ export default function PDFThumbnailPreview({
   onClick, 
   className = '' 
 }: PDFThumbnailPreviewProps) {
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const loadSignedUrl = async () => {
+    const loadPDFBlob = async () => {
       setLoading(true);
       try {
-        const url = await getSignedUrl(filePath);
-        if (url) {
-          setSignedUrl(url);
+        const blob = await fetchPDFAsBlob(filePath);
+        if (blob) {
+          setPdfBlob(blob);
           setError(false);
         } else {
           setError(true);
         }
       } catch (err) {
-        console.error('Error loading signed URL:', err);
+        console.error('Error loading PDF blob:', err);
         setError(true);
       } finally {
         setLoading(false);
@@ -41,7 +41,7 @@ export default function PDFThumbnailPreview({
     };
 
     if (filePath) {
-      loadSignedUrl();
+      loadPDFBlob();
     }
   }, [filePath]);
 
@@ -80,7 +80,7 @@ export default function PDFThumbnailPreview({
     );
   }
 
-  if (error || !signedUrl) {
+  if (error || !pdfBlob) {
     return (
       <div className={containerClasses} onClick={onClick}>
         <div className="w-full h-full bg-card/50 border-2 border-dashed border-border/30 flex flex-col items-center justify-center">
@@ -99,7 +99,7 @@ export default function PDFThumbnailPreview({
   return (
     <div className={containerClasses} onClick={onClick}>
       <Document
-        file={signedUrl}
+        file={pdfBlob}
         onLoadSuccess={onDocumentLoadSuccess}
         onLoadError={onDocumentLoadError}
         loading=""
@@ -112,6 +112,8 @@ export default function PDFThumbnailPreview({
           loading=""
           className="pdf-thumbnail w-full h-full"
           scale={1}
+          renderTextLayer={false}
+          renderAnnotationLayer={false}
         />
       </Document>
       {onClick && (

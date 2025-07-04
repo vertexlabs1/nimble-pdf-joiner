@@ -240,6 +240,30 @@ export async function uploadFiles(files: File[]): Promise<{ success: boolean; er
 }
 
 /**
+ * Fetch PDF as blob for react-pdf compatibility
+ */
+export async function fetchPDFAsBlob(filePath: string): Promise<Blob | null> {
+  try {
+    const signedUrl = await getSignedUrl(filePath);
+    if (!signedUrl) {
+      console.error('Could not get signed URL for PDF');
+      return null;
+    }
+
+    const response = await fetch(signedUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${response.status} ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    return blob;
+  } catch (error) {
+    console.error('Error fetching PDF as blob:', error);
+    return null;
+  }
+}
+
+/**
  * Clear the signed URL cache
  */
 export function clearSignedUrlCache(): void {
