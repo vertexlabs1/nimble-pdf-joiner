@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import '@/lib/pdfConfig';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 interface PDFViewerProps {
   file: File | string;
