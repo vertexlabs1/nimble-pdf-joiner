@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { mergePDFs, downloadBlob, MergeResult, detectEncryptedFiles, EncryptedFileInfo } from '@/utils/pdfUtils';
-import { logMergeActivity, calculateTotalSizeMB } from '@/utils/analytics';
+import { incrementMergeCount } from '@/utils/analytics';
 import { EncryptedPDFDialog } from '@/components/EncryptedPDFDialog';
 import { MergeSuccess } from '@/components/MergeSuccess';
 import { MergeError } from '@/components/MergeError';
@@ -31,15 +31,10 @@ export const MergeButton = ({ files, isLoading, setIsLoading, customFilename }: 
       
       const result = await mergePDFs(files, includeEncrypted);
       setMergeResult(result);
-      
-      const totalSizeMB = calculateTotalSizeMB(files);
-      console.log('Calculated total file size:', totalSizeMB, 'MB');
 
       if (result.success) {
-        // Only log successful merges - don't await to avoid blocking UI
-        logMergeActivity(files.length, totalSizeMB, false).catch(err => {
-          console.warn('Analytics logging failed silently:', err);
-        });
+        // Increment lifetime counters for successful merges
+        incrementMergeCount(files.length);
 
         // Filename is now managed by parent component
 
@@ -60,10 +55,6 @@ export const MergeButton = ({ files, isLoading, setIsLoading, customFilename }: 
           });
         }
       } else {
-        // Only log actual merge failures - don't await to avoid blocking UI
-        logMergeActivity(files.length, totalSizeMB, true).catch(err => {
-          console.warn('Analytics logging failed silently:', err);
-        });
         
         toast({
           title: 'Merge failed',
@@ -75,12 +66,6 @@ export const MergeButton = ({ files, isLoading, setIsLoading, customFilename }: 
       console.log('PDF merge completed');
     } catch (error) {
       console.error('Error merging PDFs:', error);
-      const totalSizeMB = calculateTotalSizeMB(files);
-      
-      // Log the error but don't let analytics failure break the app
-      logMergeActivity(files.length, totalSizeMB, true).catch(err => {
-        console.warn('Analytics logging failed silently:', err);
-      });
       
       toast({
         title: 'Merge failed',
@@ -141,38 +126,13 @@ export const MergeButton = ({ files, isLoading, setIsLoading, customFilename }: 
     if (mergeResult?.mergedPdfBytes) {
       const finalFilename = getDisplayFilename();
       
-      // Save to storage first
-      try {
-        const { uploadMergedPDF } = await import('@/utils/fileStorage');
-        const result = await uploadMergedPDF(
-          mergeResult.mergedPdfBytes,
-          finalFilename,
-          files
-        );
-        
-        if (result.success) {
-          toast({
-            title: 'File saved & downloaded',
-            description: `Your merged PDF "${finalFilename}" has been saved to your files and is downloading`,
-          });
-        } else {
-          toast({
-            title: 'Download started',
-            description: `Download started, but couldn't save to files: ${result.error}`,
-            variant: 'destructive',
-          });
-        }
-      } catch (error) {
-        console.error('Error saving file:', error);
-        toast({
-          title: 'Download started',
-          description: `Download started, but couldn't save to files`,
-          variant: 'destructive',
-        });
-      }
-      
-      // Download the file
+      // Download the file directly
       downloadBlob(mergeResult.mergedPdfBytes, finalFilename);
+      
+      toast({
+        title: 'Download started',
+        description: `Your merged PDF "${finalFilename}" is downloading`,
+      });
     }
   };
 

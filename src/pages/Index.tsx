@@ -7,7 +7,8 @@ import { FilenameInput } from '@/components/FilenameInput';
 import { SecurityCallout } from '@/components/SecurityCallout';
 import { SecurityInfoDialog } from '@/components/SecurityInfoDialog';
 import { HowItWorks } from '@/components/HowItWorks';
-import { GoProButton } from '@/components/GoProButton';
+import { UsageStats } from '@/components/UsageStats';
+import { BuyMeACoffeeButton } from '@/components/BuyMeACoffeeButton';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -166,34 +167,9 @@ const Index = () => {
           <SecurityCallout />
         </div>
 
-        {/* Enhanced Features Section */}
-        <div className="max-w-4xl mx-auto mb-8">
-          <Card className="p-6 bg-white/80 border border-gray-200 backdrop-blur-sm shadow-lg">
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Experience</h2>
-              <p className="text-gray-600">Free merging or unlock powerful pro features</p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-md mx-auto">
-              {/* Current Status Indicator */}
-              <div className="flex-1 w-full sm:w-auto">
-                <div className="flex items-center justify-center px-6 py-3 bg-green-50 border-2 border-green-200 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-700">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="font-semibold">You're using: <strong>Free PDF Merger</strong></span>
-                  </div>
-                </div>
-              </div>
-              
-              <GoProButton />
-            </div>
-            
-            <div className="text-center mt-4">
-              <p className="text-xs text-gray-500">
-                Pro features: PDF to CSV, Redact text, Batch processing, API access & more
-              </p>
-            </div>
-          </Card>
+        {/* Usage Statistics Section */}
+        <div className="max-w-3xl mx-auto mb-8">
+          <UsageStats />
         </div>
 
         {/* Main Content */}
@@ -307,8 +283,8 @@ const Index = () => {
         <footer className="mt-16 pt-8">
           <Separator className="mb-8 bg-gray-200" />
           
-          {/* Product Hunt Badge */}
-          <div className="text-center mb-8">
+          {/* Product Hunt & Buy Me a Coffee Badges */}
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-6 mb-8">
             <a 
               href="https://www.producthunt.com/products/merge-pdf-securely?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-merge&#0045;pdf&#0045;securely" 
               target="_blank" 
@@ -318,11 +294,15 @@ const Index = () => {
               <img 
                 src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=985982&theme=light&t=1751390980188" 
                 alt="Merge PDF Securely - Merge PDFs in your browser — fast, private, and secure | Product Hunt" 
-                className="w-60 h-auto mx-auto rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
+                className="w-60 h-auto rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200"
                 width="240" 
                 height="52" 
               />
             </a>
+            
+            <div className="flex items-center">
+              <BuyMeACoffeeButton />
+            </div>
           </div>
           
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
