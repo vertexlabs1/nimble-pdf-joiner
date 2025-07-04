@@ -140,11 +140,17 @@ export default function EnhancedMyFiles() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
           {files.map((file) => (
             <Card key={file.id} className="p-4 space-y-3 hover:shadow-md transition-shadow">
-              <PDFThumbnail
-                file={file.signedUrl || ''}
-                onClick={() => handleViewFile(file)}
-                size="medium"
-              />
+              <div className="relative group">
+                <PDFThumbnail
+                  file={file.signedUrl || ''}
+                  onClick={() => handleViewFile(file)}
+                  size="medium"
+                  className="transition-transform group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                  <Eye className="h-6 w-6 text-white" />
+                </div>
+              </div>
               
               <div className="space-y-1">
                 <h3 className="font-medium text-sm truncate" title={file.displayName}>
@@ -214,11 +220,16 @@ export default function EnhancedMyFiles() {
           {files.map((file) => (
             <Card key={file.id} className="p-4">
               <div className="flex items-center gap-4">
-                <PDFThumbnail
-                  file={file.signedUrl || ''}
-                  size="small"
-                  onClick={() => handleViewFile(file)}
-                />
+                <div className="relative group cursor-pointer" onClick={() => handleViewFile(file)}>
+                  <PDFThumbnail
+                    file={file.signedUrl || ''}
+                    size="small"
+                    className="transition-transform group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <Eye className="h-4 w-4 text-white" />
+                  </div>
+                </div>
                 
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium truncate" title={file.displayName}>
