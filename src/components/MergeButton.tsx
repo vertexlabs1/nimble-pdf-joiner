@@ -36,7 +36,9 @@ export const MergeButton = ({ files, isLoading, setIsLoading, customFilename }: 
         // Track the files processed
         incrementFileCount(files.length);
 
-        // Filename is now managed by parent component
+        // Automatically download the merged PDF
+        const finalFilename = getDisplayFilename();
+        downloadBlob(result.mergedPdfBytes!, finalFilename);
 
         if (result.encryptedPagesWarning) {
           toast({

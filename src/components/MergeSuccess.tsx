@@ -1,7 +1,9 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileText, Info, AlertTriangle, CheckCircle } from 'lucide-react';
-import { MergeResult } from '@/utils/pdfUtils';
+import { Button } from '@/components/ui/button';
+import { FileText, Info, AlertTriangle, CheckCircle, Download } from 'lucide-react';
+import { MergeResult, downloadBlob } from '@/utils/pdfUtils';
+import { useToast } from '@/hooks/use-toast';
 
 interface MergeSuccessProps {
   mergeResult: MergeResult;
@@ -12,6 +14,17 @@ export const MergeSuccess = ({
   mergeResult, 
   finalFilename 
 }: MergeSuccessProps) => {
+  const { toast } = useToast();
+
+  const handleDownload = () => {
+    if (mergeResult.mergedPdfBytes) {
+      downloadBlob(mergeResult.mergedPdfBytes, finalFilename);
+      toast({
+        title: 'Download started',
+        description: `Your merged PDF "${finalFilename}" is downloading`,
+      });
+    }
+  };
   return (
     <div className="space-y-4">
       {mergeResult.encryptedPagesWarning && (
@@ -55,14 +68,22 @@ export const MergeSuccess = ({
           </div>
         </div>
         <h3 className="text-lg font-semibold text-green-900 mb-2">
-          PDF Successfully Merged & Downloaded!
+          PDF Successfully Merged!
         </h3>
         <p className="text-green-700 mb-4">
           {mergeResult.processedFiles.length} PDF files combined into one document with {mergeResult.totalPages} total pages.
         </p>
-        <p className="text-green-600 font-medium">
-          File saved as: <span className="font-mono">{finalFilename}</span>
+        <p className="text-green-600 font-medium mb-4">
+          File ready as: <span className="font-mono">{finalFilename}</span>
         </p>
+        <Button
+          onClick={handleDownload}
+          className="bg-green-600 hover:bg-green-700 text-white"
+          size="lg"
+        >
+          <Download className="h-4 w-4 mr-2" />
+          Download PDF
+        </Button>
       </div>
     </div>
   );
